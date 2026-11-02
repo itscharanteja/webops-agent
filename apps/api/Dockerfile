@@ -4,6 +4,7 @@ RUN corepack enable && corepack prepare pnpm@10.34.9 --activate
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/api ./apps/api
 COPY packages/contracts ./packages/contracts
+COPY supabase/migrations ./supabase/migrations
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @webops/contracts build
 RUN pnpm --filter @webops/api build

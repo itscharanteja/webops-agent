@@ -15,9 +15,15 @@ if (!databaseUrl || !redisUrl)
   throw new Error('WORKER_DATABASE_URL and REDIS_URL are required');
 
 const concurrency = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 2));
+const useSsl =
+  databaseUrl.includes('rds.amazonaws.com') ||
+  databaseUrl.includes('sslmode=require') ||
+  (process.env.NODE_ENV === 'production' && !databaseUrl.includes('localhost'));
+
 const pool = new Pool({
   connectionString: databaseUrl,
   max: Math.max(4, concurrency * 2),
+  ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 const repo = new WorkerRepository(pool);
 const artifactStore = new ArtifactStore();

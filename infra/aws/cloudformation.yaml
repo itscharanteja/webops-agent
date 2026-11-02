@@ -520,7 +520,7 @@ Resources:
             - Name: HOST
               Value: '0.0.0.0'
             - Name: DATABASE_URL
-              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops'
+              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops?sslmode=require'
             - Name: REDIS_URL
               Value: !Sub 'redis://${RedisCluster.RedisEndpoint.Address}:${RedisCluster.RedisEndpoint.Port}'
             - Name: COGNITO_USER_POOL_ID
@@ -580,9 +580,9 @@ Resources:
             - Name: NODE_ENV
               Value: production
             - Name: DATABASE_URL
-              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops'
+              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops?sslmode=require'
             - Name: WORKER_DATABASE_URL
-              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops'
+              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops?sslmode=require'
             - Name: REDIS_URL
               Value: !Sub 'redis://${RedisCluster.RedisEndpoint.Address}:${RedisCluster.RedisEndpoint.Port}'
             - Name: S3_BUCKET_NAME
