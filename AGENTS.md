@@ -20,16 +20,16 @@ Use a TypeScript monorepo with `pnpm` and Python managed with `uv`:
 
 ```text
 apps/web/                 Next.js App Router, TypeScript, Mantine components, Tailwind utilities
-apps/api/                 Fastify, TypeScript, authenticated REST and SSE
+apps/api/                 Fastify, TypeScript, authenticated REST and SSE (Amazon Cognito JWT/OIDC)
 apps/worker/              BullMQ consumer and scan orchestration, TypeScript
-services/scanner/         Python 3.12, Playwright, FastMCP tools, deterministic checks
+services/scanner/         Python 3.12, Playwright, FastMCP tools, Amazon Bedrock AI reasoning
 packages/contracts/       Zod schemas, generated OpenAPI types, shared enums
-supabase/migrations/      SQL schema, indexes, RLS policies
-infra/                    Cloud Run deployment files and configuration examples
+infra/aws/                AWS CloudFormation infrastructure templates (ECS Fargate, ALB, S3, Cognito)
+infra/local/              Local Compose for Postgres and Redis
 tests/fixtures/site/      Local site with known defects and safe form test fixtures
 ```
 
-Supabase provides Auth, Postgres, and private Storage. Redis provides BullMQ and short-lived event fan-out. Postgres is the source of truth for scans, issues, evidence metadata, and event history. Deploy web, API, and worker as separate GCP Cloud Run services; keep at least one worker instance warm with CPU allocated while idle so BullMQ can consume jobs. Package the Python scanner and Chromium with the worker, and launch the scanner as a supervised subprocess per job. Use newline-delimited JSON over stdout for progress/results and stderr for process diagnostics. The scanner's FastMCP server exposes only the bounded tools below to its agent runtime; neither the UI nor public API can call browser tools directly. Set per-job process, browser, page, and network timeouts.
+AWS provides the full production infrastructure: Amazon Cognito for Auth (User Pools, email OTP/SRP, standard OIDC JWKS), Amazon S3 for private proof Storage, Amazon Bedrock for generative AI explanations, Amazon RDS for Postgres, and Amazon ElastiCache for Redis (BullMQ and short-lived event fan-out). Postgres is the source of truth for scans, issues, evidence metadata, and event history. Deploy web, API, and worker as separate AWS ECS Fargate services behind an Application Load Balancer (ALB); keep at least one worker instance warm so BullMQ can consume jobs. Package the Python scanner and Chromium with the worker, and launch the scanner as a supervised subprocess per job. Use newline-delimited JSON over stdout for progress/results and stderr for process diagnostics. The scanner's FastMCP server exposes only the bounded tools below to its agent runtime; neither the UI nor public API can call browser tools directly. Set per-job process, browser, page, and network timeouts.
 
 Keep each boundary typed: Zod for public API payloads, Pydantic for scanner inputs/outputs, and a versioned JSON protocol between worker and scanner. Pin dependencies and Playwright browser version.
 
@@ -83,7 +83,7 @@ Use UUID primary keys, `timestamptz`, foreign keys, indexes on project/scan/stat
 | `issue_revisions` | `issue_id`, editor ID, timestamp, old/new values, change reason, version |
 | `reports` | `id`, `scan_id`, immutable summary, coverage, issue snapshot JSON, created timestamp; unique `scan_id` |
 
-Use a fingerprint based on `(rule_id, normalized page URL, stable target locator or destination)`; do not include volatile message text, timestamps, or screenshot IDs. A repeated finding updates `last_seen` and creates a new observation. Do not overwrite user-edited issue fields. Mark issues absent from a *successful, sufficiently covered* repeat scan as `not_seen` in a derived field; never auto-close them. Capture the title, priority, status, explanation, and evidence IDs inside `reports.issue_snapshot` so history does not drift. Store screenshots and large artifacts in a private Storage bucket using generated object keys, not public URLs.
+Use a fingerprint based on `(rule_id, normalized page URL, stable target locator or destination)`; do not include volatile message text, timestamps, or screenshot IDs. A repeated finding updates `last_seen` and creates a new observation. Do not overwrite user-edited issue fields. Mark issues absent from a *successful, sufficiently covered* repeat scan as `not_seen` in a derived field; never auto-close them. Capture the title, priority, status, explanation, and evidence IDs inside `reports.issue_snapshot` so history does not drift. Store screenshots and large artifacts in a private Amazon S3 bucket using generated object keys, not public URLs.
 
 Persist an observation only after its required proof is stored. Use a database transaction for the observation, evidence links, issue upsert, and revision metadata; uploaded objects orphaned by a failed transaction are removed by cleanup. Store each report's coverage as counts plus the exact set of visited URLs and skip reasons. A historical report reads only its snapshot and observation/evidence records, never current issue fields.
 
@@ -93,13 +93,13 @@ Every rendered citation has an evidence ID and stable in-app route:
 
 `/projects/{projectId}/scans/{scanId}/evidence/{evidenceId}`
 
-The proof viewer must enforce project access before showing metadata or issuing a short-lived signed Storage URL. Show the source page URL, capture time, rule, and proof type. For screenshot proof, display the image and highlight the stored bounding box when available. For DOM proof, show escaped, sanitized HTML/text plus locator. For console proof, show message and stack/source. For network proof, show redacted method, URL, status/failure, and timing. For URL proof, show source/destination/final URL and status. Include links back to the issue and scan. If an artifact has expired or failed to upload, show a clear `proof unavailable` state; do not present an unverified citation.
+The proof viewer must enforce project access before showing metadata or issuing a short-lived signed S3 Storage URL. Show the source page URL, capture time, rule, and proof type. For screenshot proof, display the image and highlight the stored bounding box when available. For DOM proof, show escaped, sanitized HTML/text plus locator. For console proof, show message and stack/source. For network proof, show redacted method, URL, status/failure, and timing. For URL proof, show source/destination/final URL and status. Include links back to the issue and scan. If an artifact has expired or failed to upload, show a clear `proof unavailable` state; do not present an unverified citation.
 
 Redact credentials, cookies, authorization headers, query keys commonly carrying tokens, and user-entered form values before persisting logs, URLs, DOM, or network data. Never store raw HAR files by default. Render DOM as text, never executable HTML. Use short signed URL lifetimes and a configurable artifact retention policy (default 90 days); report metadata remains available after artifact expiry and states that proof is no longer retained.
 
 ## API and UI
 
-All endpoints use Supabase JWT authentication, project membership authorization, pagination, and structured errors. The API uses service credentials only server-side. Generate OpenAPI from Fastify schemas.
+All endpoints use Amazon Cognito (or standard OIDC) JWT authentication, project membership authorization, pagination, and structured errors. The API uses service credentials only server-side. Generate OpenAPI from Fastify schemas.
 
 | Method and path | Behavior |
 | --- | --- |
@@ -142,7 +142,7 @@ The LLM cannot change the approved origins, navigate arbitrary URLs, issue raw H
 - Use isolated browser contexts with no persistent cookies or filesystem access. Block downloads and file uploads. Do not run arbitrary scripts from agent prompts. Restrict cross-origin requests to the approved policy. Cap response sizes and artifact sizes.
 - Safe form testing is off by default. MVP may inspect labels/validation without submitting. A later explicit staging-only option may submit allowlisted, non-destructive forms using test data and test accounts; require a per-form allowlist and dry-run preview. Never click purchase, delete, send, publish, transfer, or other irreversible actions.
 - Apply per-user/project scan quotas and concurrency limits. Rate limit the API and crawler. Log job IDs and request IDs, not sensitive page content. Monitor queue age, scan duration, failed jobs, Storage usage, and proof-link failures.
-- Apply Postgres RLS for member-scoped reads and writes. Keep Supabase service keys, Redis credentials, and model keys in Secret Manager. Use private Cloud Run ingress for the worker, TLS for Redis, and least-privilege service accounts. Set retention and deletion jobs for screenshots and logs.
+- Apply Postgres RLS for member-scoped reads and writes. Use AWS Secrets Manager / Parameter Store for database, Redis, and Bedrock credentials. Use private ECS networking for worker and API, TLS for ElastiCache, and least-privilege IAM task roles. Set retention and deletion jobs for screenshots and logs.
 
 ## Phased build plan
 
@@ -150,7 +150,7 @@ Complete each phase and its gate before the next. Keep a short `README.md` with 
 
 ### Phase 1 — foundation
 
-- [ ] Scaffold monorepo, shared contracts, formatting/type checks, Dockerfiles, and local Compose for Postgres/Supabase-compatible services and Redis.
+- [ ] Scaffold monorepo, shared contracts, formatting/type checks, Dockerfiles, and local Compose for Postgres and Redis.
 - [ ] Add migrations, RLS policies, Auth integration, project CRUD, approved-origin validation, and project creation UI.
 - [ ] Add fixture site with known defects and a harmless form; seed a test project.
 - **Gate:** unauthenticated and cross-project access fail; a project can be created with only valid public origins.
@@ -175,7 +175,7 @@ Complete each phase and its gate before the next. Keep a short `README.md` with 
 
 ### Phase 5 — deploy and harden
 
-- [ ] Deploy web/API/worker to Cloud Run, Redis to managed Redis, secrets to Secret Manager, Storage as private bucket, and configure filtering egress.
+- [ ] Deploy web/API/worker to AWS ECS Fargate, Redis to Amazon ElastiCache, secrets to AWS Secrets Manager, Storage as private Amazon S3 bucket, Bedrock AI models, and configure filtering egress.
 - [ ] Add quotas, observability, retention jobs, load checks, and deployment/runbook documentation.
 - **Gate:** production smoke scan finishes within configured limits, proof links require authorization, and expired artifacts show their retention state.
 
