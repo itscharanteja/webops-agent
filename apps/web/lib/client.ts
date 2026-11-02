@@ -38,6 +38,31 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   return response.json();
 }
 
+export async function apiBlob(path: string): Promise<Blob> {
+  const response = await authorizedFetch(path);
+  if (!response.ok) throw new Error(`Proof unavailable (${response.status})`);
+  return response.blob();
+}
+
+export async function downloadIssueMarkdown(issueId: string): Promise<void> {
+  const response = await authorizedFetch(`/v1/issues/${issueId}/markdown`);
+  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  const blob = await response.blob();
+  const header = response.headers.get('content-disposition') ?? '';
+  const filename =
+    /^attachment; filename="([a-z0-9-]+\.md)"$/i.exec(header)?.[1] ??
+    `issue-${issueId}.md`;
+  const url = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export async function apiStream(
   path: string,
   after: number,

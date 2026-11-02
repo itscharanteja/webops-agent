@@ -14,6 +14,8 @@ import type { TokenVerifier } from './auth.js';
 import { registerScanRoutes } from './scan-routes.js';
 import type { ScanRepository } from './scan-repository.js';
 import type { ScanRuntime } from './scan-runtime.js';
+import type { IssueRepository } from './issue-repository.js';
+import { registerIssueRoutes } from './issue-routes.js';
 import {
   PolicyError,
   validateApprovedOrigins,
@@ -28,6 +30,7 @@ type Deps = {
   logger?: boolean;
   scanRepository?: ScanRepository;
   scanRuntime?: ScanRuntime;
+  issueRepository?: IssueRepository;
 };
 type ApiError = Error & { statusCode?: number; code?: string };
 const uuid =
@@ -286,6 +289,11 @@ export async function buildApp(deps: Deps) {
     ...(deps.scanRepository ? { scans: deps.scanRepository } : {}),
     ...(deps.scanRuntime ? { runtime: deps.scanRuntime } : {}),
     ...(deps.resolver ? { resolver: deps.resolver } : {}),
+  });
+  registerIssueRoutes(app, {
+    issues: deps.issueRepository,
+    getUser: (request) => userId(request, deps.verifyToken),
+    webOrigin: deps.webOrigin,
   });
   return app;
 }

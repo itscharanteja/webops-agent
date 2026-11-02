@@ -568,6 +568,11 @@ export interface paths {
                                     url: string;
                                     error: string;
                                 }[];
+                                screenshots: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    viewport: string;
+                                }[];
                             }[];
                             nextOffset: number | null;
                         };
@@ -631,6 +636,396 @@ export interface paths {
                             createdAt: string;
                         };
                     };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                projectId: string;
+                                fingerprint: string;
+                                title: string;
+                                description: string;
+                                /** @enum {string} */
+                                priority: "P0" | "P1" | "P2" | "P3";
+                                /** @enum {string} */
+                                status: "open" | "in_progress" | "resolved" | "wont_fix";
+                                version: number;
+                                /** Format: date-time */
+                                firstSeen: string;
+                                /** Format: date-time */
+                                lastSeen: string;
+                                notSeen: boolean;
+                                affectedUrl: string | null;
+                                latestRuleId: null | string;
+                                latestObservedAt: string | null;
+                                confidence: null | number;
+                                evidenceCount: number;
+                            }[];
+                            nextOffset: number | null;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/issues/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            projectId: string;
+                            fingerprint: string;
+                            title: string;
+                            description: string;
+                            /** @enum {string} */
+                            priority: "P0" | "P1" | "P2" | "P3";
+                            /** @enum {string} */
+                            status: "open" | "in_progress" | "resolved" | "wont_fix";
+                            version: number;
+                            /** Format: date-time */
+                            firstSeen: string;
+                            /** Format: date-time */
+                            lastSeen: string;
+                            notSeen: boolean;
+                            affectedUrl: string | null;
+                            latestRuleId: null | string;
+                            latestObservedAt: string | null;
+                            confidence: null | number;
+                            evidenceCount: number;
+                            observations: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                scanId: string;
+                                /** Format: uuid */
+                                pageId: string;
+                                ruleId: string;
+                                ruleVersion: string;
+                                /** @enum {string} */
+                                detectedSeverity: "P0" | "P1" | "P2" | "P3";
+                                confidence: number;
+                                facts: {
+                                    [key: string]: unknown;
+                                };
+                                explanation: {
+                                    [key: string]: unknown;
+                                };
+                                /** Format: date-time */
+                                createdAt: string;
+                                citations: {
+                                    /** Format: uuid */
+                                    evidenceId: string;
+                                    label: string;
+                                    /** @enum {string} */
+                                    kind: "screenshot" | "dom" | "console" | "network" | "url";
+                                }[];
+                            }[];
+                            revisions: {
+                                /** Format: date-time */
+                                at: string;
+                                /** Format: uuid */
+                                editorId: string;
+                                version: number;
+                                oldValues: {
+                                    [key: string]: unknown;
+                                };
+                                newValues: {
+                                    [key: string]: unknown;
+                                };
+                            }[];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        title?: string;
+                        description?: string;
+                        /** @enum {string} */
+                        priority?: "P0" | "P1" | "P2" | "P3";
+                        /** @enum {string} */
+                        status?: "open" | "in_progress" | "resolved" | "wont_fix";
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            projectId: string;
+                            fingerprint: string;
+                            title: string;
+                            description: string;
+                            /** @enum {string} */
+                            priority: "P0" | "P1" | "P2" | "P3";
+                            /** @enum {string} */
+                            status: "open" | "in_progress" | "resolved" | "wont_fix";
+                            version: number;
+                            /** Format: date-time */
+                            firstSeen: string;
+                            /** Format: date-time */
+                            lastSeen: string;
+                            notSeen: boolean;
+                            affectedUrl: string | null;
+                            latestRuleId: null | string;
+                            latestObservedAt: string | null;
+                            confidence: null | number;
+                            evidenceCount: number;
+                            observations: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                scanId: string;
+                                /** Format: uuid */
+                                pageId: string;
+                                ruleId: string;
+                                ruleVersion: string;
+                                /** @enum {string} */
+                                detectedSeverity: "P0" | "P1" | "P2" | "P3";
+                                confidence: number;
+                                facts: {
+                                    [key: string]: unknown;
+                                };
+                                explanation: {
+                                    [key: string]: unknown;
+                                };
+                                /** Format: date-time */
+                                createdAt: string;
+                                citations: {
+                                    /** Format: uuid */
+                                    evidenceId: string;
+                                    label: string;
+                                    /** @enum {string} */
+                                    kind: "screenshot" | "dom" | "console" | "network" | "url";
+                                }[];
+                            }[];
+                            revisions: {
+                                /** Format: date-time */
+                                at: string;
+                                /** Format: uuid */
+                                editorId: string;
+                                version: number;
+                                oldValues: {
+                                    [key: string]: unknown;
+                                };
+                                newValues: {
+                                    [key: string]: unknown;
+                                };
+                            }[];
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/issues/{id}/markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evidence/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            scanId: string;
+                            pageId: string | null;
+                            /** Format: uuid */
+                            projectId: string;
+                            /** @enum {string} */
+                            kind: "screenshot" | "dom" | "console" | "network" | "url";
+                            /** Format: date-time */
+                            capturedAt: string;
+                            locator: null | string;
+                            payload: {
+                                [key: string]: unknown;
+                            };
+                            verified: boolean;
+                            retainedUntil: string | null;
+                            artifactUrl: null | string;
+                            available: boolean;
+                            sourceUrl: string | null;
+                            ruleIds: string[];
+                            issueIds: string[];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evidence/{id}/artifact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };

@@ -35,6 +35,7 @@ type PageRow = {
   visited_at: Date | null;
   console_messages: { items: string[] };
   failed_requests: { items: Array<{ url: string; error: string }> };
+  screenshots: Array<{ id: string; viewport: string }> | null;
 };
 
 function mapScan(row: ScanRow): Scan {
@@ -76,6 +77,7 @@ function mapPage(row: PageRow): ScanPage {
     visitedAt: row.visited_at?.toISOString() ?? null,
     consoleMessages: row.console_messages.items,
     failedRequests: row.failed_requests.items,
+    screenshots: row.screenshots ?? [],
   };
 }
 
@@ -308,8 +310,12 @@ export class PgScanRepository implements ScanRepository {
       );
       if (!accessible.rowCount) return null;
       const result = await client.query<PageRow>(
-        `select id, scan_id, normalized_url, final_url, depth, http_status, title, timing_ms, visited_at, console_messages, failed_requests
-         from scan_pages where scan_id = $1 order by depth, normalized_url limit $2 offset $3`,
+        `select p.id, p.scan_id, p.normalized_url, p.final_url, p.depth, p.http_status, p.title,
+           p.timing_ms, p.visited_at, p.console_messages, p.failed_requests,
+           (select json_agg(json_build_object('id', e.id, 'viewport', e.payload->>'viewport') order by e.captured_at)
+            from evidence e where e.page_id = p.id and e.kind = 'screenshot'
+              and e.payload->>'pageScreenshot' = 'true') as screenshots
+         from scan_pages p where p.scan_id = $1 order by p.depth, p.normalized_url limit $2 offset $3`,
         [id, limit + 1, offset],
       );
       return {

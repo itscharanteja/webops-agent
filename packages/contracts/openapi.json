@@ -1323,6 +1323,26 @@
                               ],
                               "additionalProperties": false
                             }
+                          },
+                          "screenshots": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "viewport": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "viewport"
+                              ],
+                              "additionalProperties": false
+                            }
                           }
                         },
                         "required": [
@@ -1336,7 +1356,8 @@
                           "timingMs",
                           "visitedAt",
                           "consoleMessages",
-                          "failedRequests"
+                          "failedRequests",
+                          "screenshots"
                         ],
                         "additionalProperties": false
                       }
@@ -1473,6 +1494,925 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/projects/{id}/issues": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "projectId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fingerprint": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "priority": {
+                            "type": "string",
+                            "enum": [
+                              "P0",
+                              "P1",
+                              "P2",
+                              "P3"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "in_progress",
+                              "resolved",
+                              "wont_fix"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer"
+                          },
+                          "firstSeen": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "lastSeen": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "notSeen": {
+                            "type": "boolean"
+                          },
+                          "affectedUrl": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uri"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "latestRuleId": {
+                            "type": [
+                              "null",
+                              "string"
+                            ]
+                          },
+                          "latestObservedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "confidence": {
+                            "type": [
+                              "null",
+                              "number"
+                            ]
+                          },
+                          "evidenceCount": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "projectId",
+                          "fingerprint",
+                          "title",
+                          "description",
+                          "priority",
+                          "status",
+                          "version",
+                          "firstSeen",
+                          "lastSeen",
+                          "notSeen",
+                          "affectedUrl",
+                          "latestRuleId",
+                          "latestObservedAt",
+                          "confidence",
+                          "evidenceCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextOffset": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextOffset"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{id}": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "projectId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "fingerprint": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": [
+                        "P0",
+                        "P1",
+                        "P2",
+                        "P3"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "in_progress",
+                        "resolved",
+                        "wont_fix"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer"
+                    },
+                    "firstSeen": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "lastSeen": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "notSeen": {
+                      "type": "boolean"
+                    },
+                    "affectedUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "latestRuleId": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "latestObservedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "confidence": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "evidenceCount": {
+                      "type": "integer"
+                    },
+                    "observations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "scanId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "pageId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "ruleId": {
+                            "type": "string"
+                          },
+                          "ruleVersion": {
+                            "type": "string"
+                          },
+                          "detectedSeverity": {
+                            "type": "string",
+                            "enum": [
+                              "P0",
+                              "P1",
+                              "P2",
+                              "P3"
+                            ]
+                          },
+                          "confidence": {
+                            "type": "number"
+                          },
+                          "facts": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "explanation": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "citations": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "evidenceId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "screenshot",
+                                    "dom",
+                                    "console",
+                                    "network",
+                                    "url"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "evidenceId",
+                                "label",
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "scanId",
+                          "pageId",
+                          "ruleId",
+                          "ruleVersion",
+                          "detectedSeverity",
+                          "confidence",
+                          "facts",
+                          "explanation",
+                          "createdAt",
+                          "citations"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "revisions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "editorId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "version": {
+                            "type": "integer"
+                          },
+                          "oldValues": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "newValues": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "editorId",
+                          "version",
+                          "oldValues",
+                          "newValues"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "projectId",
+                    "fingerprint",
+                    "title",
+                    "description",
+                    "priority",
+                    "status",
+                    "version",
+                    "firstSeen",
+                    "lastSeen",
+                    "notSeen",
+                    "affectedUrl",
+                    "latestRuleId",
+                    "latestObservedAt",
+                    "confidence",
+                    "evidenceCount",
+                    "observations",
+                    "revisions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "issues"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 4000
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "P0",
+                      "P1",
+                      "P2",
+                      "P3"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "in_progress",
+                      "resolved",
+                      "wont_fix"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "projectId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "fingerprint": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": [
+                        "P0",
+                        "P1",
+                        "P2",
+                        "P3"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "in_progress",
+                        "resolved",
+                        "wont_fix"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer"
+                    },
+                    "firstSeen": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "lastSeen": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "notSeen": {
+                      "type": "boolean"
+                    },
+                    "affectedUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "latestRuleId": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "latestObservedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "confidence": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "evidenceCount": {
+                      "type": "integer"
+                    },
+                    "observations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "scanId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "pageId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "ruleId": {
+                            "type": "string"
+                          },
+                          "ruleVersion": {
+                            "type": "string"
+                          },
+                          "detectedSeverity": {
+                            "type": "string",
+                            "enum": [
+                              "P0",
+                              "P1",
+                              "P2",
+                              "P3"
+                            ]
+                          },
+                          "confidence": {
+                            "type": "number"
+                          },
+                          "facts": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "explanation": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "citations": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "evidenceId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "screenshot",
+                                    "dom",
+                                    "console",
+                                    "network",
+                                    "url"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "evidenceId",
+                                "label",
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "scanId",
+                          "pageId",
+                          "ruleId",
+                          "ruleVersion",
+                          "detectedSeverity",
+                          "confidence",
+                          "facts",
+                          "explanation",
+                          "createdAt",
+                          "citations"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "revisions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "editorId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "version": {
+                            "type": "integer"
+                          },
+                          "oldValues": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "newValues": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "editorId",
+                          "version",
+                          "oldValues",
+                          "newValues"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "projectId",
+                    "fingerprint",
+                    "title",
+                    "description",
+                    "priority",
+                    "status",
+                    "version",
+                    "firstSeen",
+                    "lastSeen",
+                    "notSeen",
+                    "affectedUrl",
+                    "latestRuleId",
+                    "latestObservedAt",
+                    "confidence",
+                    "evidenceCount",
+                    "observations",
+                    "revisions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{id}/markdown": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/evidence/{id}": {
+      "get": {
+        "tags": [
+          "evidence"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "scanId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "pageId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "projectId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "screenshot",
+                        "dom",
+                        "console",
+                        "network",
+                        "url"
+                      ]
+                    },
+                    "capturedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "locator": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "payload": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "retainedUntil": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "artifactUrl": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "available": {
+                      "type": "boolean"
+                    },
+                    "sourceUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "ruleIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "issueIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "scanId",
+                    "pageId",
+                    "projectId",
+                    "kind",
+                    "capturedAt",
+                    "locator",
+                    "payload",
+                    "verified",
+                    "retainedUntil",
+                    "artifactUrl",
+                    "available",
+                    "sourceUrl",
+                    "ruleIds",
+                    "issueIds"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/evidence/{id}/artifact": {
+      "get": {
+        "tags": [
+          "evidence"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
           }
         }
       }

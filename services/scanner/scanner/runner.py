@@ -16,6 +16,7 @@ from playwright.async_api import async_playwright, BrowserContext, Page, Route, 
 
 from .policy import PolicyError, UrlPolicy, normalize_url, origin_of, safe_text, safe_url
 from .protocol import DonePayload, EventPayload, FindingPayload, PagePayload, PageScreenshotPayload, ProtocolMessage, ScanInput
+from .checks import CHECK_VERSION, VIEWPORTS, finding, run_dom_checks, screenshot_proof
 
 
 def key(prefix: str, value: str) -> str:
@@ -198,6 +199,23 @@ class Crawler:
             result.links = await page.locator("a[href]").evaluate_all(
                 "els => els.filter(e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden').map((e,i) => ({url:e.href,text:(e.textContent||'').trim().slice(0,200),locator:'a[href] index '+i})).slice(0,1000)"
             )
+            if result.status is not None and result.status < 400:
+                for viewport in VIEWPORTS:
+                    try:
+                        findings, screenshot = await run_dom_checks(page, url, viewport)
+                        result.findings.extend(findings)
+                        if screenshot:
+                            result.screenshots.append((viewport, screenshot))
+                    except Exception as error:
+                        self.complete = False
+                        self.limitations.append(f"Checks incomplete for {safe_url(url)} ({viewport}): {safe_text(str(error), 180)}")
+            elif result.status is not None:
+                for viewport, (width, height) in VIEWPORTS.items():
+                    await page.set_viewport_size({"width": width, "height": height})
+                    image = await page.screenshot(type="jpeg", quality=40, full_page=True, timeout=10_000)
+                    shot = screenshot_proof(image, viewport, width, height)
+                    if shot:
+                        result.screenshots.append((viewport, shot))
         except Exception as error:
             result.limitation = safe_text(str(error), 300)
             result.failed_requests.append({"url": safe_url(url)[:2048], "error": result.limitation})
@@ -213,6 +231,7 @@ class Crawler:
         seen = {base}
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(headless=True, args=["--disable-background-networking", "--disable-features=Prerender2"])
+            self.emitter.event("runtime", "info", "Browser ready", "browser-ready", {"browserVersion": browser.version, "checkVersion": CHECK_VERSION})
             context = await browser.new_context(viewport={"width": 1440, "height": 900},
                                                 service_workers="block", accept_downloads=False)
             await context.route("**/*", self.guard)
@@ -252,6 +271,14 @@ class Crawler:
                             "timing_ms": result.timing_ms, "visited_at": result.visited_at,
                             "console_messages": result.console[:100], "failed_requests": result.failed_requests[:100],
                         })
+                        for viewport, shot in result.screenshots:
+                            self.emitter.send("candidate", key("screenshot", result.url + viewport), {
+                                "page_url": safe_url(result.url), "viewport": viewport,
+                                "artifact_base64": shot["artifact_base64"], "mime_type": "image/jpeg",
+                                "width": VIEWPORTS[viewport][0], "height": VIEWPORTS[viewport][1]})
+                        for item in result.findings:
+                            self.emitter.send("finding", key("finding", result.url + item["rule_id"] + item["target"] + str(item["facts"].get("viewport"))), item)
+                        self.emit_page_findings(result)
                         for link_item in result.links:
                             raw_link = link_item["url"]
                             try:
@@ -274,12 +301,73 @@ class Crawler:
                     self.complete = False
                     for url, _ in pending:
                         self.skip(url, "Page budget reached")
+                self.emit_broken_links()
             finally:
                 await context.close()
                 await browser.close()
         self.emitter.send("done", "done", {"visited_urls": self.visited[:100], "skipped": self.skipped[:500],
                                            "failed_count": self.failed_count, "limitations": self.limitations[:100],
                                            "complete": self.complete})
+
+    def emit_page_findings(self, result: PageResult) -> None:
+        url = safe_url(result.url)
+        if (result.status is None and result.limitation and "blockedbyclient" not in result.limitation) or (result.status is not None and result.status >= 400):
+            observed = f"Navigation to {url} returned HTTP {result.status}." if result.status is not None else f"Navigation to {url} failed: {result.limitation}."
+            item = finding(result.url, "HTTP_PAGE_ERROR", "page", "Page request failed", "P1", observed,
+                "Visitors cannot access this page reliably.", [f"Open {url} in a browser.", "Inspect the response or navigation error."],
+                "Restore the page or fix the link and server response.",
+                [{"kind": "url", "locator": None, "payload": {"v": 1, "sourceUrl": url, "finalUrl": result.final_url,
+                   "status": result.status, "error": result.limitation, "capturedAt": result.visited_at}}],
+                {"url": url, "status": result.status, "error": result.limitation})
+            self.emitter.send("finding", key("finding", result.url + "HTTP_PAGE_ERROR"), item)
+        errors = sorted({message for message in result.console if message.startswith(("error:", "pageerror:"))
+                         and "Failed to load resource" not in message})
+        if errors:
+            item = finding(result.url, "JS_CONSOLE_ERROR", "console", "JavaScript console error", "P1",
+                f"The page emitted {len(errors)} JavaScript error(s): {errors[0]}",
+                "A repeatable script error can break page behavior.", [f"Open {url}.", "Inspect the browser console."],
+                "Fix the script failure and verify the console is clear.",
+                [{"kind": "console", "locator": None, "payload": {"v": 1, "url": url, "messages": errors[:20]}}],
+                {"url": url, "messages": errors[:20]})
+            self.emitter.send("finding", key("finding", result.url + "JS_CONSOLE_ERROR"), item)
+        unique_network = {(item["method"], item["url"]): item for item in result.network_events}
+        for (method, destination), network in unique_network.items():
+            item = finding(result.url, "FAILED_FIRST_PARTY_REQUEST", method + " " + destination,
+                "First-party request failed", "P2", f"{method} {destination} failed: {network['error']}.",
+                "A first-party resource or API request did not complete successfully.",
+                [f"Open {url}.", f"Inspect the {method} request to {destination}."],
+                "Fix the failing first-party endpoint or resource reference.",
+                [{"kind": "network", "locator": None, "payload": {"v": 1, "sourceUrl": url,
+                  "method": method, "url": destination, "status": network.get("status"), "failure": network["error"]}}],
+                {"url": url, "method": method, "destination": destination, "failure": network["error"]})
+            self.emitter.send("finding", key("finding", result.url + "FAILED_FIRST_PARTY_REQUEST" + method + destination), item)
+
+    def emit_broken_links(self) -> None:
+        for source in self.results.values():
+            for link in source.links:
+                try:
+                    destination = normalize_url(link["url"], source.final_url or source.url)
+                except PolicyError:
+                    continue
+                target = self.results.get(destination)
+                if not target or (target.status is not None and target.status < 400):
+                    continue
+                if target.status is None and target.limitation and "blockedbyclient" in target.limitation:
+                    continue
+                dest_safe = safe_url(destination)
+                source_safe = safe_url(source.url)
+                observed = f"Visible link '{safe_text(link['text'], 200)}' on {source_safe} points to {dest_safe}, which returned HTTP {target.status}." if target.status is not None else f"Visible link on {source_safe} points to {dest_safe}, which failed to load."
+                item = finding(source.url, "BROKEN_INTERNAL_LINK", dest_safe, "Broken internal link", "P1",
+                    observed, "Visitors following this link reach an error instead of the intended content.",
+                    [f"Open {source_safe}.", f"Activate the link to {dest_safe}."],
+                    "Update the link destination or restore the target page.",
+                    [{"kind": "dom", "locator": link["locator"], "payload": {"v": 1, "anchorText": safe_text(link["text"], 200), "sourceUrl": source_safe}},
+                     {"kind": "url", "locator": link["locator"], "payload": {"v": 1, "sourceUrl": source_safe,
+                      "destinationUrl": dest_safe, "finalUrl": target.final_url, "status": target.status,
+                      "error": target.limitation, "capturedAt": target.visited_at}}],
+                    {"url": source_safe, "destination": dest_safe, "status": target.status})
+                self.emitter.send("finding", key("finding", source.url + "BROKEN_INTERNAL_LINK" + destination), item)
+
 
 async def main() -> None:
     raw = sys.stdin.buffer.readline(65_537)

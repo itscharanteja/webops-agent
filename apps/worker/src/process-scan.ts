@@ -10,6 +10,8 @@ import {
   type ScannerMessage,
 } from '@webops/contracts';
 import type { WorkerRepository } from './repository.js';
+import { ArtifactStore, type StoredArtifact } from './artifact-store.js';
+import { validateFinding } from './validate-finding.js';
 
 const MAX_LINE_BYTES = 1_048_576;
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -77,6 +79,7 @@ export async function processScan(
   active: Set<ChildProcess>,
 ) {
   const scanId = job.data.scanId;
+  const artifactStore = new ArtifactStore();
   const scan = await repo.load(scanId);
   if (!scan) throw new Error('Scan job has no saved policy');
   if (terminalStatuses.has(scan.status)) {
@@ -187,6 +190,14 @@ export async function processScan(
         if (message.scan_id !== scanId) throw new Error('Scanner ID mismatch');
         if (done) throw new Error('Scanner sent data after done');
         if (message.type === 'event') {
+          if (
+            message.payload.phase === 'runtime' &&
+            typeof message.payload.data.browserVersion === 'string'
+          )
+            await repo.setBrowserVersion(
+              scanId,
+              message.payload.data.browserVersion,
+            );
           const entry = await repo.appendEvent(
             scanId,
             message.idempotency_key,
@@ -211,6 +222,73 @@ export async function processScan(
             },
           );
           if (entry.inserted) await publish(entry.event).catch(() => undefined);
+        } else if (message.type === 'candidate') {
+          assertApprovedPage(message, scan.config.approvedOrigins);
+          const artifact = await artifactStore.put(
+            scanId,
+            message.payload.artifact_base64,
+            message.payload.mime_type,
+          );
+          try {
+            const inserted = await repo.savePageScreenshot(
+              scanId,
+              message,
+              artifact,
+            );
+            if (!inserted) await artifactStore.remove(artifact.objectKey);
+          } catch (error) {
+            await artifactStore.remove(artifact.objectKey);
+            throw error;
+          }
+        } else if (message.type === 'finding') {
+          assertApprovedPage(message, scan.config.approvedOrigins);
+          validateFinding(message.payload);
+          if (await repo.hasFinding(scanId, message.idempotency_key)) continue;
+          const artifacts: Array<StoredArtifact | null> = [];
+          try {
+            for (const proof of message.payload.evidence) {
+              if (proof.kind === 'screenshot') {
+                if (!proof.artifact_base64 || !proof.mime_type)
+                  throw new Error('Screenshot proof is missing');
+                artifacts.push(
+                  await artifactStore.put(
+                    scanId,
+                    proof.artifact_base64,
+                    proof.mime_type,
+                  ),
+                );
+              } else artifacts.push(null);
+            }
+            const inserted = await repo.saveFinding(
+              scanId,
+              scan.projectId,
+              message,
+              artifacts,
+            );
+            if (!inserted)
+              await Promise.all(
+                artifacts
+                  .filter((item): item is StoredArtifact => !!item)
+                  .map((item) => artifactStore.remove(item.objectKey)),
+              );
+            const entry = await repo.appendEvent(
+              scanId,
+              `finding:${message.idempotency_key}`,
+              'info',
+              'checks',
+              `Found ${message.payload.rule_id} on ${message.payload.page_url}`,
+              { ruleId: message.payload.rule_id },
+            );
+            if (entry.inserted)
+              await publish(entry.event).catch(() => undefined);
+          } catch (error) {
+            await Promise.all(
+              artifacts
+                .filter((item): item is StoredArtifact => !!item)
+                .map((item) => artifactStore.remove(item.objectKey)),
+            );
+            throw error;
+          }
         } else if (message.type === 'done') {
           done = message;
         }

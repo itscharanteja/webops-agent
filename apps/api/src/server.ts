@@ -4,6 +4,7 @@ import { createSupabaseVerifier } from './auth.js';
 import { PgProjectRepository } from './repository.js';
 import { PgScanRepository } from './scan-repository.js';
 import { createScanRuntime } from './scan-runtime.js';
+import { IssueRepository } from './issue-repository.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -39,6 +40,7 @@ const scanRuntime = createScanRuntime(redisUrl);
 const app = await buildApp({
   repository: new PgProjectRepository(pool),
   scanRepository: new PgScanRepository(pool),
+  issueRepository: new IssueRepository(pool),
   scanRuntime,
   verifyToken: createSupabaseVerifier(
     supabaseUrl,

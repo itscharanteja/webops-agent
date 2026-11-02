@@ -1,5 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 import type { ScanEvent, ScannerMessage } from '@webops/contracts';
+import type { StoredArtifact } from './artifact-store.js';
+import { fingerprint } from './fingerprint.js';
 
 type EventRow = {
   scan_id: string;
@@ -133,8 +135,17 @@ export class WorkerRepository {
   async markRunning(scanId: string): Promise<void> {
     await this.tx(scanId, async (client) => {
       await client.query(
-        "update scans set status = 'running', started_at = coalesce(started_at, now()), scanner_version = '0.2.0', check_version = 'none' where id = $1 and status in ('queued', 'running')",
+        "update scans set status = 'running', started_at = coalesce(started_at, now()), scanner_version = '0.3.0', check_version = '1' where id = $1 and status in ('queued', 'running')",
         [scanId],
+      );
+    });
+  }
+
+  async setBrowserVersion(scanId: string, version: string): Promise<void> {
+    await this.tx(scanId, async (client) => {
+      await client.query(
+        'update scans set browser_version = $2 where id = $1',
+        [scanId, version.slice(0, 100)],
       );
     });
   }
@@ -177,6 +188,164 @@ export class WorkerRepository {
           JSON.stringify({ v: 1, items: page.failed_requests }),
         ],
       );
+    });
+  }
+
+  async hasFinding(scanId: string, key: string): Promise<boolean> {
+    return this.tx(scanId, async (client) => {
+      const found = await client.query(
+        'select id from evidence where scan_id = $1 and idempotency_key = $2',
+        [scanId, `${key}:0`],
+      );
+      return !!found.rowCount;
+    });
+  }
+
+  async savePageScreenshot(
+    scanId: string,
+    message: Extract<ScannerMessage, { type: 'candidate' }>,
+    artifact: StoredArtifact,
+  ): Promise<boolean> {
+    return this.tx(scanId, async (client) => {
+      const page = await client.query<{ id: string }>(
+        'select id from scan_pages where scan_id = $1 and normalized_url = $2',
+        [scanId, message.payload.page_url],
+      );
+      if (!page.rows[0]) throw new Error('Screenshot page was not persisted');
+      const result = await client.query(
+        `insert into evidence (scan_id, page_id, kind, captured_at, payload, object_key, checksum, mime_type,
+           retained_until, verified, idempotency_key)
+         values ($1,$2,'screenshot',now(),$3,$4,$5,$6,now() + interval '90 days',true,$7)
+         on conflict (scan_id, idempotency_key) do nothing returning id`,
+        [
+          scanId,
+          page.rows[0].id,
+          JSON.stringify({
+            v: 1,
+            viewport: message.payload.viewport,
+            width: message.payload.width,
+            height: message.payload.height,
+            pageScreenshot: true,
+          }),
+          artifact.objectKey,
+          artifact.checksum,
+          artifact.mimeType,
+          message.idempotency_key,
+        ],
+      );
+      return !!result.rowCount;
+    });
+  }
+
+  async saveFinding(
+    scanId: string,
+    projectId: string,
+    message: Extract<ScannerMessage, { type: 'finding' }>,
+    artifacts: Array<StoredArtifact | null>,
+  ): Promise<boolean> {
+    return this.tx(scanId, async (client) => {
+      const finding = message.payload;
+      const page = await client.query<{ id: string }>(
+        'select id from scan_pages where scan_id = $1 and normalized_url = $2',
+        [scanId, finding.page_url],
+      );
+      if (!page.rows[0]) throw new Error('Finding page was not persisted');
+      const fp = fingerprint(finding.rule_id, finding.page_url, finding.target);
+      const issue = await client.query<{ id: string }>(
+        `insert into issues (project_id, fingerprint, title, description, priority, status, first_seen, last_seen)
+         values ($1,$2,$3,$4,$5,'open',now(),now())
+         on conflict (project_id, fingerprint) do update set last_seen = now(), not_seen = false
+         returning id`,
+        [projectId, fp, finding.title, finding.description, finding.priority],
+      );
+      const issueId = issue.rows[0]!.id;
+      const explanation = {
+        v: 1,
+        observed: finding.observed,
+        impact: finding.impact,
+        reproductionSteps: finding.reproduction_steps,
+        suggestedFix: finding.suggested_fix,
+      };
+      const observation = await client.query<{ id: string }>(
+        `insert into issue_observations (issue_id, scan_id, page_id, fingerprint, rule_id, rule_version,
+           detected_severity, confidence, facts, explanation_snapshot)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         on conflict (scan_id, fingerprint, page_id) do nothing returning id`,
+        [
+          issueId,
+          scanId,
+          page.rows[0].id,
+          fp,
+          finding.rule_id,
+          finding.rule_version,
+          finding.priority,
+          finding.confidence,
+          JSON.stringify(finding.facts),
+          JSON.stringify(explanation),
+        ],
+      );
+      const observationId =
+        observation.rows[0]?.id ??
+        (
+          await client.query<{ id: string }>(
+            'select id from issue_observations where scan_id = $1 and fingerprint = $2 and page_id = $3',
+            [scanId, fp, page.rows[0].id],
+          )
+        ).rows[0]?.id;
+      if (!observationId) throw new Error('Observation insert failed');
+      let inserted = false;
+      for (let index = 0; index < finding.evidence.length; index++) {
+        const proof = finding.evidence[index]!;
+        const artifact = artifacts[index];
+        if (proof.kind === 'screenshot' && !artifact)
+          throw new Error('Screenshot proof was not stored');
+        if (proof.kind !== 'screenshot' && !Object.keys(proof.payload).length)
+          throw new Error('Proof payload is empty');
+        const key = `${message.idempotency_key}:${index}`;
+        const evidence = await client.query<{ id: string }>(
+          `insert into evidence (scan_id, page_id, kind, captured_at, locator, payload, object_key,
+             checksum, mime_type, retained_until, verified, idempotency_key)
+           values ($1,$2,$3,now(),$4,$5,$6,$7,$8,$9,true,$10)
+           on conflict (scan_id, idempotency_key) do nothing returning id`,
+          [
+            scanId,
+            page.rows[0].id,
+            proof.kind,
+            proof.locator,
+            JSON.stringify(proof.payload),
+            artifact?.objectKey ?? null,
+            artifact?.checksum ?? null,
+            artifact?.mimeType ?? null,
+            artifact ? new Date(Date.now() + 90 * 86400_000) : null,
+            key,
+          ],
+        );
+        const evidenceId =
+          evidence.rows[0]?.id ??
+          (
+            await client.query<{ id: string }>(
+              'select id from evidence where scan_id = $1 and idempotency_key = $2',
+              [scanId, key],
+            )
+          ).rows[0]?.id;
+        if (!evidenceId) throw new Error('Evidence insert failed');
+        const position = await client.query<{ next: number }>(
+          'select coalesce(max(citation_order), -1) + 1 as next from observation_evidence where observation_id = $1',
+          [observationId],
+        );
+        await client.query(
+          `insert into observation_evidence (observation_id, evidence_id, citation_order, label)
+           values ($1,$2,$3,$4) on conflict (observation_id, evidence_id) do nothing`,
+          [
+            observationId,
+            evidenceId,
+            position.rows[0]!.next,
+            `${proof.kind} proof`,
+          ],
+        );
+        inserted ||= !!evidence.rowCount;
+      }
+      return inserted;
     });
   }
 

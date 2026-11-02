@@ -69,6 +69,13 @@ export default function ProjectPage() {
             <Group justify="space-between" align="center">
               <Title order={1}>{project.name}</Title>
               <Group>
+                <Button
+                  component={Link}
+                  href={`/projects/${id}/issues`}
+                  variant="light"
+                >
+                  Issues board
+                </Button>
                 <Button onClick={startScan} loading={busy}>
                   Start scan
                 </Button>

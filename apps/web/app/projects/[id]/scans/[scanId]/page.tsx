@@ -201,6 +201,9 @@ export default function LiveScanPage() {
               Cancel scan
             </Button>
           </Group>
+          <Anchor component={Link} href={`/projects/${id}/issues`}>
+            Open issues board
+          </Anchor>
         </Group>
         {error && (
           <Alert color="red" role="alert">
@@ -306,6 +309,7 @@ export default function LiveScanPage() {
                     <Table.Th>Status</Table.Th>
                     <Table.Th>Title</Table.Th>
                     <Table.Th>Time</Table.Th>
+                    <Table.Th>Screenshots</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -317,6 +321,19 @@ export default function LiveScanPage() {
                       <Table.Td>{page.httpStatus ?? 'Failed'}</Table.Td>
                       <Table.Td>{page.title || '—'}</Table.Td>
                       <Table.Td>{page.timingMs ?? '—'} ms</Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          {page.screenshots.map((shot) => (
+                            <Anchor
+                              key={shot.id}
+                              component={Link}
+                              href={`/projects/${id}/scans/${scanId}/evidence/${shot.id}`}
+                            >
+                              {shot.viewport}
+                            </Anchor>
+                          ))}
+                        </Group>
+                      </Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>

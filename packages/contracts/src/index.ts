@@ -124,6 +124,9 @@ export const scanPageSchema = z.object({
   visitedAt: z.string().datetime().nullable(),
   consoleMessages: z.array(z.string()),
   failedRequests: z.array(z.object({ url: z.string(), error: z.string() })),
+  screenshots: z.array(
+    z.object({ id: z.string().uuid(), viewport: z.string() }),
+  ),
 });
 
 export const scanListSchema = z.object({
@@ -255,3 +258,84 @@ export type ScannerMessage = z.infer<typeof scannerMessageSchema>;
 export type Scan = z.infer<typeof scanSchema>;
 export type ScanEvent = z.infer<typeof scanEventSchema>;
 export type ScanPage = z.infer<typeof scanPageSchema>;
+
+export const issuePatchSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    description: z.string().max(4000).optional(),
+    priority: prioritySchema.optional(),
+    status: issueStatusSchema.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0);
+export const citationSchema = z.object({
+  evidenceId: z.string().uuid(),
+  label: z.string(),
+  kind: evidenceKindSchema,
+});
+export const observationSchema = z.object({
+  id: z.string().uuid(),
+  scanId: z.string().uuid(),
+  pageId: z.string().uuid(),
+  ruleId: z.string(),
+  ruleVersion: z.string(),
+  detectedSeverity: z.enum(priorities),
+  confidence: z.number(),
+  facts: z.record(z.unknown()),
+  explanation: z.record(z.unknown()),
+  createdAt: z.string().datetime(),
+  citations: z.array(citationSchema),
+});
+export const issueSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  fingerprint: z.string(),
+  title: z.string(),
+  description: z.string(),
+  priority: prioritySchema,
+  status: issueStatusSchema,
+  version: z.number().int(),
+  firstSeen: z.string().datetime(),
+  lastSeen: z.string().datetime(),
+  notSeen: z.boolean(),
+  affectedUrl: z.string().url().nullable(),
+  latestRuleId: z.string().nullable(),
+  latestObservedAt: z.string().datetime().nullable(),
+  confidence: z.number().nullable(),
+  evidenceCount: z.number().int(),
+});
+export const issueDetailSchema = issueSchema.extend({
+  observations: z.array(observationSchema),
+  revisions: z.array(
+    z.object({
+      at: z.string().datetime(),
+      editorId: z.string().uuid(),
+      version: z.number().int(),
+      oldValues: z.record(z.unknown()),
+      newValues: z.record(z.unknown()),
+    }),
+  ),
+});
+export const issueListSchema = z.object({
+  items: z.array(issueSchema),
+  nextOffset: z.number().int().nullable(),
+});
+export const evidenceSchema = z.object({
+  id: z.string().uuid(),
+  scanId: z.string().uuid(),
+  pageId: z.string().uuid().nullable(),
+  projectId: z.string().uuid(),
+  kind: evidenceKindSchema,
+  capturedAt: z.string().datetime(),
+  locator: z.string().nullable(),
+  payload: z.record(z.unknown()),
+  verified: z.boolean(),
+  retainedUntil: z.string().datetime().nullable(),
+  artifactUrl: z.string().nullable(),
+  available: z.boolean(),
+  sourceUrl: z.string().url().nullable(),
+  ruleIds: z.array(z.string()),
+  issueIds: z.array(z.string().uuid()),
+});
+export type Issue = z.infer<typeof issueSchema>;
+export type IssueDetail = z.infer<typeof issueDetailSchema>;
+export type Evidence = z.infer<typeof evidenceSchema>;
