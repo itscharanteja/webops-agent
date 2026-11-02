@@ -1,16 +1,15 @@
 import { Pool } from 'pg';
 import { buildApp } from './app.js';
-import { createSupabaseVerifier } from './auth.js';
+import { createAuthVerifier } from './auth.js';
 import { PgProjectRepository } from './repository.js';
 import { PgScanRepository } from './scan-repository.js';
 import { createScanRuntime } from './scan-runtime.js';
 import { IssueRepository } from './issue-repository.js';
 
 const databaseUrl = process.env.DATABASE_URL;
-const supabaseUrl = process.env.SUPABASE_URL;
 const redisUrl = process.env.REDIS_URL;
-if (!databaseUrl || !supabaseUrl || !redisUrl)
-  throw new Error('DATABASE_URL, SUPABASE_URL and REDIS_URL are required');
+if (!databaseUrl || !redisUrl)
+  throw new Error('DATABASE_URL and REDIS_URL are required');
 
 const pool = new Pool({ connectionString: databaseUrl, max: 10 });
 try {
@@ -42,10 +41,14 @@ const app = await buildApp({
   scanRepository: new PgScanRepository(pool),
   issueRepository: new IssueRepository(pool),
   scanRuntime,
-  verifyToken: createSupabaseVerifier(
-    supabaseUrl,
-    process.env.SUPABASE_JWT_AUDIENCE,
-  ),
+  verifyToken: createAuthVerifier({
+    cognitoUserPoolId: process.env.COGNITO_USER_POOL_ID,
+    cognitoRegion:
+      process.env.COGNITO_REGION ?? process.env.AWS_REGION ?? 'ap-south-1',
+    cognitoClientId: process.env.COGNITO_CLIENT_ID,
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabaseAudience: process.env.SUPABASE_JWT_AUDIENCE,
+  }),
   webOrigin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
   healthCheck: async () => {
     let database = false;

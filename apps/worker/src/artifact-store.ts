@@ -6,9 +6,6 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const localDir = path.resolve(root, process.env.ARTIFACT_DIR ?? '.artifacts');
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseUrl = process.env.SUPABASE_URL;
-const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'webops-proofs';
 
 const s3Bucket = process.env.S3_BUCKET_NAME ?? process.env.AWS_S3_BUCKET;
 const s3Region = process.env.AWS_REGION ?? 'ap-south-1';
@@ -59,20 +56,6 @@ export class ArtifactStore {
           },
         }),
       );
-    } else if (serviceKey && supabaseUrl) {
-      const url = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${objectKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${serviceKey}`,
-          apikey: serviceKey,
-          'content-type': mimeType,
-          'x-upsert': 'false',
-        },
-        body: bytes,
-      });
-      if (!response.ok)
-        throw new Error(`Private artifact upload failed (${response.status})`);
     } else {
       const destination = path.join(localDir, objectKey);
       await mkdir(path.dirname(destination), { recursive: true, mode: 0o700 });
@@ -92,17 +75,6 @@ export class ArtifactStore {
       await s3Client
         .send(new DeleteObjectCommand({ Bucket: s3Bucket, Key: objectKey }))
         .catch(() => undefined);
-    } else if (serviceKey && supabaseUrl) {
-      await fetch(
-        `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${objectKey}`,
-        {
-          method: 'DELETE',
-          headers: {
-            authorization: `Bearer ${serviceKey}`,
-            apikey: serviceKey,
-          },
-        },
-      ).catch(() => undefined);
     } else {
       await unlink(path.join(localDir, objectKey)).catch(() => undefined);
     }

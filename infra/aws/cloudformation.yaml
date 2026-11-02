@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'WebOps Agentic Workflow - Complete AWS ECS Fargate & S3 Infrastructure'
+Description: 'WebOps Agentic Workflow - 100% AWS Cloud-Native Infrastructure (Cognito, ECS Fargate, S3, Bedrock)'
 
 Parameters:
   EnvironmentName:
@@ -26,21 +26,6 @@ Parameters:
     Type: String
     NoEcho: true
     Description: 'Redis connection string (e.g. redis://host:6379)'
-  SupabaseUrl:
-    Type: String
-    Description: 'Supabase project URL for Auth'
-  SupabaseAnonKey:
-    Type: String
-    NoEcho: true
-    Description: 'Supabase anonymous key'
-  SupabaseServiceRoleKey:
-    Type: String
-    NoEcho: true
-    Description: 'Supabase service role key'
-  SupabaseJwtSecret:
-    Type: String
-    NoEcho: true
-    Description: 'Supabase JWT secret for token verification'
   BedrockRegion:
     Type: String
     Default: 'us-east-1'
@@ -61,7 +46,43 @@ Parameters:
 
 Resources:
   # =========================================================================
-  # Artifact Storage (S3)
+  # Amazon Cognito User Pool & Web Client (100% AWS Managed Auth)
+  # =========================================================================
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${EnvironmentName}-user-pool'
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireUppercase: false
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${EnvironmentName}-web-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  # =========================================================================
+  # Artifact Storage (Amazon S3)
   # =========================================================================
   ArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -170,16 +191,12 @@ Resources:
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: 'Allow public HTTP/HTTPS access to Load Balancer'
+      GroupDescription: 'Allow public HTTP access to Load Balancer'
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: '0.0.0.0/0'
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
           CidrIp: '0.0.0.0/0'
       SecurityGroupEgress:
         - IpProtocol: -1
@@ -404,14 +421,12 @@ Resources:
               Value: !Ref DatabaseUrl
             - Name: REDIS_URL
               Value: !Ref RedisUrl
-            - Name: SUPABASE_URL
-              Value: !Ref SupabaseUrl
-            - Name: SUPABASE_ANON_KEY
-              Value: !Ref SupabaseAnonKey
-            - Name: SUPABASE_SERVICE_ROLE_KEY
-              Value: !Ref SupabaseServiceRoleKey
-            - Name: SUPABASE_JWT_SECRET
-              Value: !Ref SupabaseJwtSecret
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref UserPool
+            - Name: COGNITO_CLIENT_ID
+              Value: !Ref UserPoolClient
+            - Name: COGNITO_REGION
+              Value: !Ref 'AWS::Region'
             - Name: S3_BUCKET_NAME
               Value: !Ref ArtifactsBucket
             - Name: AWS_REGION
@@ -466,10 +481,6 @@ Resources:
               Value: !Ref DatabaseUrl
             - Name: REDIS_URL
               Value: !Ref RedisUrl
-            - Name: SUPABASE_URL
-              Value: !Ref SupabaseUrl
-            - Name: SUPABASE_SERVICE_ROLE_KEY
-              Value: !Ref SupabaseServiceRoleKey
             - Name: S3_BUCKET_NAME
               Value: !Ref ArtifactsBucket
             - Name: AWS_REGION
@@ -523,10 +534,12 @@ Resources:
               Value: production
             - Name: PORT
               Value: '3000'
-            - Name: NEXT_PUBLIC_SUPABASE_URL
-              Value: !Ref SupabaseUrl
-            - Name: NEXT_PUBLIC_SUPABASE_ANON_KEY
-              Value: !Ref SupabaseAnonKey
+            - Name: NEXT_PUBLIC_COGNITO_USER_POOL_ID
+              Value: !Ref UserPool
+            - Name: NEXT_PUBLIC_COGNITO_CLIENT_ID
+              Value: !Ref UserPoolClient
+            - Name: NEXT_PUBLIC_AWS_REGION
+              Value: !Ref 'AWS::Region'
             - Name: NEXT_PUBLIC_API_URL
               Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}/v1'
           LogConfiguration:
@@ -562,6 +575,12 @@ Outputs:
   LoadBalancerUrl:
     Description: 'Public URL of the Application Load Balancer'
     Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+  CognitoUserPoolId:
+    Description: 'Amazon Cognito User Pool ID'
+    Value: !Ref UserPool
+  CognitoClientId:
+    Description: 'Amazon Cognito Web App Client ID'
+    Value: !Ref UserPoolClient
   ArtifactsBucketName:
     Description: 'S3 bucket for scan evidence proof artifacts'
     Value: !Ref ArtifactsBucket

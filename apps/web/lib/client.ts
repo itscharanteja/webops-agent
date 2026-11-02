@@ -1,24 +1,17 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-
-let client: SupabaseClient | null = null;
-export function supabase(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  client ??= createClient(url, key);
-  return client;
-}
+import { getStoredSession } from './cognito';
 
 async function authorizedFetch(path: string, init: RequestInit = {}) {
-  const auth = supabase();
-  if (!auth) throw new Error('Supabase is not configured');
-  const { data, error } = await auth.auth.getSession();
-  if (error || !data.session) throw new Error('Sign in to continue');
+  const session = getStoredSession();
+  if (!session?.accessToken) {
+    throw new Error('Sign in to continue');
+  }
+
   const headers: Record<string, string> = {
-    authorization: `Bearer ${data.session.access_token}`,
+    authorization: `Bearer ${session.accessToken}`,
     ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
     ...(init.headers as Record<string, string> | undefined),
   };
+
   return fetch(
     `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}${path}`,
     {

@@ -10,9 +10,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1161.0",
     "@mantine/core": "9.7.4",
     "@mantine/hooks": "9.7.4",
-    "@supabase/supabase-js": "2.57.0",
     "@webops/contracts": "workspace:*",
     "next": "16.4.3",
     "react": "19.2.0",
