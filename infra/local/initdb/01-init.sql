@@ -1,4 +1,6 @@
 \i /migrations/0001_foundation.sql
+\i /migrations/0002_scans.sql
 
--- Local Compose credential only.
+-- Local Compose credential only. Production credentials belong in Secret Manager.
 alter role webops_app login password 'webops_dev_password';
+alter role webops_worker login password 'webops_worker_dev_password';

@@ -37,3 +37,14 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   }
   return response.json();
 }
+
+export async function apiStream(
+  path: string,
+  after: number,
+  signal: AbortSignal,
+) {
+  return authorizedFetch(path, {
+    signal,
+    headers: { accept: 'text/event-stream', 'Last-Event-ID': String(after) },
+  });
+}

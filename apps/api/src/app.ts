@@ -11,6 +11,9 @@ import {
 } from '@webops/contracts';
 import type { ProjectRepository } from './repository.js';
 import type { TokenVerifier } from './auth.js';
+import { registerScanRoutes } from './scan-routes.js';
+import type { ScanRepository } from './scan-repository.js';
+import type { ScanRuntime } from './scan-runtime.js';
 import {
   PolicyError,
   validateApprovedOrigins,
@@ -23,6 +26,8 @@ type Deps = {
   resolver?: Resolver;
   webOrigin: string;
   logger?: boolean;
+  scanRepository?: ScanRepository;
+  scanRuntime?: ScanRuntime;
 };
 type ApiError = Error & { statusCode?: number; code?: string };
 const uuid =
@@ -275,5 +280,12 @@ export async function buildApp(deps: Deps) {
       }
     },
   );
+  registerScanRoutes(app, {
+    projects: deps.repository,
+    getUser: (request) => userId(request, deps.verifyToken),
+    ...(deps.scanRepository ? { scans: deps.scanRepository } : {}),
+    ...(deps.scanRuntime ? { runtime: deps.scanRuntime } : {}),
+    ...(deps.resolver ? { resolver: deps.resolver } : {}),
+  });
   return app;
 }

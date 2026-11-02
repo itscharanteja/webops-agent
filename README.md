@@ -1,17 +1,17 @@
 # WebOps Agent
 
-Phase 1 foundation: pnpm/uv monorepo, shared Zod contracts, Postgres schema and RLS, Supabase JWT verification, member-scoped project CRUD, exact-origin approval, project UI, and local fixture. The API publishes OpenAPI at `/openapi.json`.
+Phase 2 adds a BullMQ worker, bounded Playwright crawler, scan pages and ordered events, SSE replay, cancellation, and a live console. Project creation and Supabase JWT authorization come from Phase 1. The API publishes OpenAPI at `/openapi.json`.
 
 ## Local setup
 
-Copy `.env.example` to `.env` and `apps/web/.env.local.example` to `apps/web/.env.local`. Configure Supabase Auth and its redirect allowlist for `http://localhost:3000/projects`. Run `docker compose up -d postgres redis fixture`, `corepack pnpm install --frozen-lockfile`, and `corepack pnpm dev`. Sign in at `http://localhost:3000/login` and create a project. The local fixture is `http://localhost:8080/index.html` and is permitted only by `WEBOPS_LOCAL_FIXTURE_ORIGIN` outside production.
+Copy `.env.example` to `.env` and `apps/web/.env.local.example` to `apps/web/.env.local`, then configure Supabase Auth. Run `docker compose up -d postgres redis fixture`, `corepack pnpm install --frozen-lockfile`, and in `services/scanner` run `uv sync --frozen` plus `uv run playwright install chromium`. Run `corepack pnpm dev` from the root. Open `http://localhost:3000/login`, create a project using `http://localhost:8080/index.html` and approved origin `http://localhost:8080`, then start a scan.
 
-For an existing Compose volume without `webops_app`, apply `infra/local/initdb/01-init.sql` as the database owner. Never put service credentials in the web environment file.
+A fresh Postgres volume applies migrations 0001 and 0002. For a Phase 1 volume, apply `supabase/migrations/0002_scans.sql` as owner and enable the `webops_worker` role with the local password from `.env.example`.
 
 ## Verification
 
-Run `corepack pnpm typecheck`, `corepack pnpm test`, `corepack pnpm format:check`, `corepack pnpm --filter @webops/web build`, and `corepack pnpm openapi:generate`. With `TEST_DATABASE_URL` set to a disposable `webops_app` database, the API database test checks project isolation. Browser sign-in is not automated without Supabase credentials.
+Run `corepack pnpm typecheck`, `corepack pnpm test`, `corepack pnpm format:check`, `corepack pnpm --filter @webops/web build`, and `corepack pnpm openapi:generate`. With Compose and the worker running, set `TEST_PHASE2=1` and the variables from `.env` before `corepack pnpm --filter @webops/api test`. The fixture gate verifies six approved pages, ordered SSE replay, cancellation, blocked-origin requests, form safety, and cross-project access.
 
-## Deployment and limits
+## Limits
 
-The web, API, and worker Dockerfiles are scaffolds. Real external scans are blocked until filtering egress and Phase 5 production controls are installed. Local Compose provides Postgres and Redis; Supabase Auth is hosted. The web build uses Next's webpack path in the current sandbox.
+Findings and proof are Phase 3. Reports contain coverage only. Real external scans remain blocked until Phase 5 filtering egress and production controls. Local Compose uses hosted Supabase Auth. The web build uses Next's webpack path in this sandbox.

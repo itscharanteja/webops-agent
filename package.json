@@ -6,7 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --filter @webops/contracts build && pnpm --parallel --filter @webops/api --filter @webops/web",
+    "dev": "pnpm --filter @webops/contracts build && pnpm --parallel --filter @webops/api --filter @webops/web --filter @webops/worker dev",
     "typecheck": "pnpm --filter @webops/contracts build && pnpm -r typecheck",
     "test": "pnpm --filter @webops/contracts build && pnpm -r test",
     "openapi:generate": "pnpm --filter @webops/contracts build && pnpm --filter @webops/api exec node --import tsx src/generate-openapi.ts && pnpm exec openapi-typescript packages/contracts/openapi.json -o packages/contracts/src/openapi.generated.ts",

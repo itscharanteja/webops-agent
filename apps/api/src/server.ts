@@ -2,31 +2,55 @@ import { Pool } from 'pg';
 import { buildApp } from './app.js';
 import { createSupabaseVerifier } from './auth.js';
 import { PgProjectRepository } from './repository.js';
+import { PgScanRepository } from './scan-repository.js';
+import { createScanRuntime } from './scan-runtime.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 const supabaseUrl = process.env.SUPABASE_URL;
-if (!databaseUrl || !supabaseUrl)
-  throw new Error('DATABASE_URL and SUPABASE_URL are required');
+const redisUrl = process.env.REDIS_URL;
+if (!databaseUrl || !supabaseUrl || !redisUrl)
+  throw new Error('DATABASE_URL, SUPABASE_URL and REDIS_URL are required');
+
 const pool = new Pool({ connectionString: databaseUrl, max: 10 });
-const schema = await pool.query(
-  "select to_regclass('public.projects')::text as projects",
-);
-if (!schema.rows[0]?.projects)
-  throw new Error('Database schema is missing. Apply the WebOps migrations.');
+try {
+  const schema = await pool.query<{
+    projects: string | null;
+    scans: string | null;
+    scan_phase: string | null;
+  }>(
+    `select to_regclass('public.projects')::text as projects,
+      to_regclass('public.scans')::text as scans,
+      (select column_name from information_schema.columns
+       where table_schema = 'public' and table_name = 'scans' and column_name = 'cancel_requested_at') as scan_phase`,
+  );
+  if (
+    !schema.rows[0]?.projects ||
+    !schema.rows[0]?.scans ||
+    !schema.rows[0]?.scan_phase
+  )
+    throw new Error(
+      'Database schema is missing Phase 2 tables or columns. Apply the WebOps migrations.',
+    );
+} catch (error) {
+  await pool.end();
+  throw error;
+}
+const scanRuntime = createScanRuntime(redisUrl);
 const app = await buildApp({
   repository: new PgProjectRepository(pool),
+  scanRepository: new PgScanRepository(pool),
+  scanRuntime,
   verifyToken: createSupabaseVerifier(
     supabaseUrl,
     process.env.SUPABASE_JWT_AUDIENCE,
   ),
   webOrigin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
 });
-await app.listen({
-  host: '0.0.0.0',
-  port: Number(process.env.API_PORT ?? 4000),
-});
+const port = Number(process.env.API_PORT ?? 4000);
+await app.listen({ host: '0.0.0.0', port });
 const shutdown = async () => {
   await app.close();
+  await scanRuntime.close();
   await pool.end();
 };
 process.once('SIGTERM', shutdown);

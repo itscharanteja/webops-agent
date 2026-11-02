@@ -273,6 +273,375 @@ export interface paths {
         };
         trace?: never;
     };
+    "/projects/{id}/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                projectId: string;
+                                /** @enum {string} */
+                                status: "queued" | "running" | "completed" | "partial" | "failed" | "cancelled";
+                                /** Format: date-time */
+                                queuedAt: string;
+                                startedAt: string | null;
+                                finishedAt: string | null;
+                                visitedCount: number;
+                                skippedCount: number;
+                                failedCount: number;
+                                cancelRequestedAt: string | null;
+                                error: null | string;
+                            }[];
+                            nextOffset: number | null;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            projectId: string;
+                            /** @enum {string} */
+                            status: "queued" | "running" | "completed" | "partial" | "failed" | "cancelled";
+                            /** Format: date-time */
+                            queuedAt: string;
+                            startedAt: string | null;
+                            finishedAt: string | null;
+                            visitedCount: number;
+                            skippedCount: number;
+                            failedCount: number;
+                            cancelRequestedAt: string | null;
+                            error: null | string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            projectId: string;
+                            /** @enum {string} */
+                            status: "queued" | "running" | "completed" | "partial" | "failed" | "cancelled";
+                            /** Format: date-time */
+                            queuedAt: string;
+                            startedAt: string | null;
+                            finishedAt: string | null;
+                            visitedCount: number;
+                            skippedCount: number;
+                            failedCount: number;
+                            cancelRequestedAt: string | null;
+                            error: null | string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            projectId: string;
+                            /** @enum {string} */
+                            status: "queued" | "running" | "completed" | "partial" | "failed" | "cancelled";
+                            /** Format: date-time */
+                            queuedAt: string;
+                            startedAt: string | null;
+                            finishedAt: string | null;
+                            visitedCount: number;
+                            skippedCount: number;
+                            failedCount: number;
+                            cancelRequestedAt: string | null;
+                            error: null | string;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: {
+                                /** Format: uuid */
+                                scanId: string;
+                                seq: number;
+                                /** Format: date-time */
+                                at: string;
+                                /** @enum {string} */
+                                level: "debug" | "info" | "warn" | "error";
+                                phase: string;
+                                message: string;
+                                payload: {
+                                    [key: string]: unknown;
+                                };
+                            }[];
+                            nextAfter: number;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{id}/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                scanId: string;
+                                /** Format: uri */
+                                normalizedUrl: string;
+                                finalUrl: string | null;
+                                depth: number;
+                                httpStatus: number | null;
+                                title: null | string;
+                                timingMs: number | null;
+                                visitedAt: string | null;
+                                consoleMessages: string[];
+                                failedRequests: {
+                                    url: string;
+                                    error: string;
+                                }[];
+                            }[];
+                            nextOffset: number | null;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            scanId: string;
+                            summary: {
+                                [key: string]: unknown;
+                            };
+                            coverage: {
+                                /** @enum {number} */
+                                v: 1;
+                                visitedUrls: string[];
+                                skipped: {
+                                    url: string;
+                                    reason: string;
+                                }[];
+                                failedCount: number;
+                                limitations: string[];
+                            };
+                            issueSnapshot: unknown[];
+                            /** Format: date-time */
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
