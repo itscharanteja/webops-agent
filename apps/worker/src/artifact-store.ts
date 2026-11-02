@@ -2,12 +2,17 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const localDir = path.resolve(root, process.env.ARTIFACT_DIR ?? '.artifacts');
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseUrl = process.env.SUPABASE_URL;
 const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'webops-proofs';
+
+const s3Bucket = process.env.S3_BUCKET_NAME ?? process.env.AWS_S3_BUCKET;
+const s3Region = process.env.AWS_REGION ?? 'ap-south-1';
+const s3Client = s3Bucket ? new S3Client({ region: s3Region }) : null;
 
 export type StoredArtifact = {
   objectKey: string;
@@ -40,7 +45,21 @@ export class ArtifactStore {
       throw new Error('Screenshot artifact signature is invalid');
     const checksum = createHash('sha256').update(bytes).digest('hex');
     const objectKey = `${scanId}/${randomUUID()}.${mimeType === 'image/jpeg' ? 'jpg' : 'png'}`;
-    if (serviceKey && supabaseUrl) {
+
+    if (s3Client && s3Bucket) {
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: s3Bucket,
+          Key: objectKey,
+          Body: bytes,
+          ContentType: mimeType,
+          Metadata: {
+            scanId,
+            checksum,
+          },
+        }),
+      );
+    } else if (serviceKey && supabaseUrl) {
       const url = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${objectKey}`;
       const response = await fetch(url, {
         method: 'POST',
@@ -69,7 +88,11 @@ export class ArtifactStore {
 
   async remove(objectKey: string): Promise<void> {
     if (!/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png)$/.test(objectKey)) return;
-    if (serviceKey && supabaseUrl) {
+    if (s3Client && s3Bucket) {
+      await s3Client
+        .send(new DeleteObjectCommand({ Bucket: s3Bucket, Key: objectKey }))
+        .catch(() => undefined);
+    } else if (serviceKey && supabaseUrl) {
       await fetch(
         `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${objectKey}`,
         {

@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
     "@webops/contracts": "workspace:*",
     "bullmq": "6.5.3",
     "ioredis": "6.0.0",

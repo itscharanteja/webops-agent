@@ -3,6 +3,7 @@ name = "webops-scanner"
 version = "0.1.0"
 requires-python = "==3.12.*"
 dependencies = [
+  "boto3>=1.35.0",
   "fastmcp==2.12.5",
   "playwright==1.56.0",
   "pydantic==2.11.9",

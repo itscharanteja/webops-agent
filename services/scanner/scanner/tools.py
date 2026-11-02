@@ -94,7 +94,7 @@ class FinishScanOutput(BaseModel):
 
 def create_scanner_mcp_server(crawler: Any) -> FastMCP:
     """Create FastMCP server bound to a specific scanner crawler instance."""
-    mcp = FastMCP("webops-scanner", description="Bounded WebOps scanner tool server")
+    mcp = FastMCP("webops-scanner")
 
     @mcp.tool(name="get_scan_policy", description="Get approved origins and crawl budgets for this scan.")
     def get_scan_policy(scan_id: str) -> PolicyOutput:

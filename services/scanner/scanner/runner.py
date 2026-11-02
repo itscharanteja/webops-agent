@@ -17,6 +17,23 @@ from playwright.async_api import async_playwright, BrowserContext, Page, Route, 
 from .policy import PolicyError, UrlPolicy, normalize_url, origin_of, safe_text, safe_url
 from .protocol import DonePayload, EventPayload, FindingPayload, PagePayload, PageScreenshotPayload, ProtocolMessage, ScanInput
 from .checks import CHECK_VERSION, VIEWPORTS, finding, run_dom_checks, screenshot_proof
+from .bedrock import explain_finding_with_bedrock
+from .tools import enrich_explanation_with_fallback
+import os
+
+
+def maybe_enrich_finding(item: dict) -> dict:
+    if os.getenv("ENABLE_BEDROCK_AI") in ("1", "true") or os.getenv("BEDROCK_MODEL_ID"):
+        evidence_ids = [str(i) for i in range(len(item.get("evidence", [])))]
+        suggestion = explain_finding_with_bedrock(item, evidence_ids)
+        if suggestion:
+            enrichment = enrich_explanation_with_fallback(item, suggestion, set(evidence_ids))
+            if enrichment.get("modelEnriched"):
+                item["description"] = enrichment["summary"]
+                item["impact"] = enrichment["impact"]
+                item["suggested_fix"] = enrichment["suggestedFix"]
+                item["facts"]["aiEnriched"] = True
+    return item
 
 
 def key(prefix: str, value: str) -> str:
@@ -77,6 +94,10 @@ class Crawler:
         self.rate_locks: dict[str, asyncio.Lock] = {}
         self.next_request_at: dict[str, float] = {}
         self.results: dict[str, PageResult] = {}
+
+    def send_finding(self, key_str: str, item: dict) -> None:
+        enriched = maybe_enrich_finding(item)
+        self.emitter.send("finding", key_str, enriched)
 
     def skip(self, url: str, reason: str) -> None:
         if len(self.skipped) < 500:
@@ -277,7 +298,7 @@ class Crawler:
                                 "artifact_base64": shot["artifact_base64"], "mime_type": "image/jpeg",
                                 "width": VIEWPORTS[viewport][0], "height": VIEWPORTS[viewport][1]})
                         for item in result.findings:
-                            self.emitter.send("finding", key("finding", result.url + item["rule_id"] + item["target"] + str(item["facts"].get("viewport"))), item)
+                            self.send_finding(key("finding", result.url + item["rule_id"] + item["target"] + str(item["facts"].get("viewport"))), item)
                         self.emit_page_findings(result)
                         for link_item in result.links:
                             raw_link = link_item["url"]
@@ -319,7 +340,7 @@ class Crawler:
                 [{"kind": "url", "locator": None, "payload": {"v": 1, "sourceUrl": url, "finalUrl": result.final_url,
                    "status": result.status, "error": result.limitation, "capturedAt": result.visited_at}}],
                 {"url": url, "status": result.status, "error": result.limitation})
-            self.emitter.send("finding", key("finding", result.url + "HTTP_PAGE_ERROR"), item)
+            self.send_finding(key("finding", result.url + "HTTP_PAGE_ERROR"), item)
         errors = sorted({message for message in result.console if message.startswith(("error:", "pageerror:"))
                          and "Failed to load resource" not in message})
         if errors:
@@ -329,7 +350,7 @@ class Crawler:
                 "Fix the script failure and verify the console is clear.",
                 [{"kind": "console", "locator": None, "payload": {"v": 1, "url": url, "messages": errors[:20]}}],
                 {"url": url, "messages": errors[:20]})
-            self.emitter.send("finding", key("finding", result.url + "JS_CONSOLE_ERROR"), item)
+            self.send_finding(key("finding", result.url + "JS_CONSOLE_ERROR"), item)
         unique_network = {(item["method"], item["url"]): item for item in result.network_events}
         for (method, destination), network in unique_network.items():
             item = finding(result.url, "FAILED_FIRST_PARTY_REQUEST", method + " " + destination,
@@ -340,7 +361,7 @@ class Crawler:
                 [{"kind": "network", "locator": None, "payload": {"v": 1, "sourceUrl": url,
                   "method": method, "url": destination, "status": network.get("status"), "failure": network["error"]}}],
                 {"url": url, "method": method, "destination": destination, "failure": network["error"]})
-            self.emitter.send("finding", key("finding", result.url + "FAILED_FIRST_PARTY_REQUEST" + method + destination), item)
+            self.send_finding(key("finding", result.url + "FAILED_FIRST_PARTY_REQUEST" + method + destination), item)
 
     def emit_broken_links(self) -> None:
         for source in self.results.values():
@@ -366,7 +387,7 @@ class Crawler:
                       "destinationUrl": dest_safe, "finalUrl": target.final_url, "status": target.status,
                       "error": target.limitation, "capturedAt": target.visited_at}}],
                     {"url": source_safe, "destination": dest_safe, "status": target.status})
-                self.emitter.send("finding", key("finding", source.url + "BROKEN_INTERNAL_LINK" + destination), item)
+                self.send_finding(key("finding", source.url + "BROKEN_INTERNAL_LINK" + destination), item)
 
 
 async def main() -> None:
