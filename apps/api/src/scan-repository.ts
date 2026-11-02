@@ -189,6 +189,38 @@ export class PgScanRepository implements ScanRepository {
       );
       const row = project.rows[0];
       if (!row) return null;
+
+      // Enforce per-project concurrent scan limit (max 1 active scan per project)
+      const activeProjectScan = await client.query<{ id: string }>(
+        `select id from scans where project_id = $1 and status in ('queued', 'running') limit 1`,
+        [projectId],
+      );
+      if (activeProjectScan.rows[0]) {
+        const error: Error & { statusCode?: number; code?: string } = new Error(
+          'A scan is already active for this project. Wait for it to complete or cancel it before starting another.',
+        );
+        error.statusCode = 409;
+        error.code = 'CONCURRENT_SCAN_LIMIT';
+        throw error;
+      }
+
+      // Enforce per-user concurrent scan quota (max 3 active scans account-wide)
+      const userActiveScans = await client.query<{ count: string }>(
+        `select count(*) as count from scans s
+         join projects p on p.id = s.project_id
+         where (p.owner_id = $1 or app.can_edit_project(p.id))
+           and s.status in ('queued', 'running')`,
+        [userId],
+      );
+      if (Number(userActiveScans.rows[0]?.count ?? 0) >= 3) {
+        const error: Error & { statusCode?: number; code?: string } = new Error(
+          'Account active scan quota reached (maximum 3 concurrent scans). Wait for an existing scan to finish.',
+        );
+        error.statusCode = 429;
+        error.code = 'USER_SCAN_QUOTA_EXCEEDED';
+        throw error;
+      }
+
       const config = {
         v: 1,
         baseUrl: row.base_url,

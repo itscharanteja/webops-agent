@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyRequest } from 'fastify';
 import swagger from '@fastify/swagger';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -16,6 +17,7 @@ import type { ScanRepository } from './scan-repository.js';
 import type { ScanRuntime } from './scan-runtime.js';
 import type { IssueRepository } from './issue-repository.js';
 import { registerIssueRoutes } from './issue-routes.js';
+import { createRateLimiter } from './rate-limiter.js';
 import {
   PolicyError,
   validateApprovedOrigins,
@@ -31,6 +33,8 @@ type Deps = {
   scanRepository?: ScanRepository;
   scanRuntime?: ScanRuntime;
   issueRepository?: IssueRepository;
+  healthCheck?: () => Promise<{ database: boolean; redis: boolean }>;
+  rateLimitMax?: number;
 };
 type ApiError = Error & { statusCode?: number; code?: string };
 const uuid =
@@ -84,7 +88,12 @@ async function normalizedData(
 }
 
 export async function buildApp(deps: Deps) {
-  const app = Fastify({ logger: deps.logger ?? true, bodyLimit: 64 * 1024 });
+  const app = Fastify({
+    logger: deps.logger ?? true,
+    bodyLimit: 64 * 1024,
+    requestIdHeader: 'x-request-id',
+    genReqId: (req) => (req.headers['x-request-id'] as string) || randomUUID(),
+  });
   app.addContentTypeParser(
     'application/json',
     { parseAs: 'string' },
@@ -113,7 +122,11 @@ export async function buildApp(deps: Deps) {
     },
   });
 
+  const rateLimitHook = createRateLimiter({ max: deps.rateLimitMax ?? 120 });
+
   app.addHook('onRequest', async (request, reply) => {
+    reply.header('x-request-id', request.id);
+    await rateLimitHook(request, reply);
     const origin = request.headers.origin;
     if (origin && origin !== deps.webOrigin)
       return fail(403, 'ORIGIN_FORBIDDEN', 'Origin is not allowed');
@@ -122,13 +135,45 @@ export async function buildApp(deps: Deps) {
       reply.header('vary', 'Origin');
       reply.header(
         'access-control-allow-headers',
-        'authorization, content-type, last-event-id, accept',
+        'authorization, content-type, last-event-id, accept, x-request-id',
       );
       reply.header('access-control-allow-methods', 'GET, POST, PATCH, OPTIONS');
     }
   });
+
+  app.get('/health', { schema: { hide: true } }, async (_request, reply) => {
+    let checks = { database: 'ok', redis: 'ok' };
+    let healthy = true;
+    if (deps.healthCheck) {
+      const result = await deps
+        .healthCheck()
+        .catch(() => ({ database: false, redis: false }));
+      checks = {
+        database: result.database ? 'ok' : 'down',
+        redis: result.redis ? 'ok' : 'down',
+      };
+      healthy = result.database && result.redis;
+    }
+    const payload = {
+      status: healthy ? 'healthy' : 'unhealthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      checks,
+    };
+    return reply.code(healthy ? 200 : 503).send(payload);
+  });
+
+  app.get('/healthz', { schema: { hide: true } }, async (_request, reply) => {
+    return reply.code(200).send({ status: 'ok' });
+  });
+
   app.addHook('preValidation', async (request) => {
-    if (request.url.startsWith('/v1/') && request.method !== 'OPTIONS') {
+    if (
+      request.url.startsWith('/v1/') &&
+      request.method !== 'OPTIONS' &&
+      request.url !== '/health' &&
+      request.url !== '/healthz'
+    ) {
       await userId(request, deps.verifyToken);
     }
   });

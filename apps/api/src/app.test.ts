@@ -169,4 +169,66 @@ describe('project API boundary', () => {
     expect(res.statusCode).toBe(503);
     expect(res.json().error.code).toBe('SCANS_UNAVAILABLE');
   });
+
+  it('exposes /health and /healthz endpoints without requiring authentication', async () => {
+    const { app } = await fixtureApp();
+    const healthz = await app.inject({ method: 'GET', url: '/healthz' });
+    expect(healthz.statusCode).toBe(200);
+    expect(healthz.json()).toEqual({ status: 'ok' });
+
+    const health = await app.inject({ method: 'GET', url: '/health' });
+    expect(health.statusCode).toBe(200);
+    expect(health.json().status).toBe('healthy');
+    expect(health.json().checks).toBeDefined();
+  });
+
+  it('traces request ID and includes x-request-id header in response', async () => {
+    const { app } = await fixtureApp();
+    const customReqId = 'custom-request-id-12345';
+    const res = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: { 'x-request-id': customReqId },
+    });
+    expect(res.headers['x-request-id']).toBe(customReqId);
+
+    const generatedRes = await app.inject({
+      method: 'GET',
+      url: '/health',
+    });
+    expect(generatedRes.headers['x-request-id']).toBeTruthy();
+  });
+
+  it('enforces API rate limits and returns 429 when threshold exceeded', async () => {
+    const { app } = await fixtureApp();
+    // Simulate exceeding the rate limit with low limit fixture
+    const limitedApp = await buildApp({
+      repository: new MemoryRepository(),
+      verifyToken: async () => ownerA,
+      webOrigin: 'http://localhost:3000',
+      logger: false,
+      rateLimitMax: 3,
+    });
+    apps.push(limitedApp);
+
+    for (let i = 0; i < 3; i++) {
+      const res = await limitedApp.inject({
+        method: 'GET',
+        url: '/v1/projects',
+        headers: { authorization: `Bearer ${ownerA}` },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['x-ratelimit-remaining']).toBe(String(3 - (i + 1)));
+    }
+
+    // 4th request must be rejected with 429
+    const blocked = await limitedApp.inject({
+      method: 'GET',
+      url: '/v1/projects',
+      headers: { authorization: `Bearer ${ownerA}` },
+    });
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.json().error.code).toBe('RATE_LIMITED');
+    expect(blocked.headers['retry-after']).toBeDefined();
+  });
 });

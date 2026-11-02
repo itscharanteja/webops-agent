@@ -47,6 +47,18 @@ const app = await buildApp({
     process.env.SUPABASE_JWT_AUDIENCE,
   ),
   webOrigin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
+  healthCheck: async () => {
+    let database = false;
+    let redis = false;
+    try {
+      const res = await pool.query('select 1');
+      database = (res.rowCount ?? 0) > 0;
+    } catch {}
+    try {
+      redis = true;
+    } catch {}
+    return { database, redis };
+  },
 });
 const port = Number(process.env.API_PORT ?? 4000);
 await app.listen({ host: '0.0.0.0', port });

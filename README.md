@@ -27,6 +27,8 @@ For a Phase 2 volume, apply Phase 3 with `docker compose exec -T postgres psql -
 
 For a Phase 3 volume, apply Phase 4 with `docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d webops -f /migrations/0004_history.sql` and `docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d webops -f /migrations/0005_not_seen.sql`.
 
+For a Phase 4 volume, apply Phase 5 with `docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d webops -f /migrations/0006_retention_cleanup.sql`.
+
 To seed the local fixture after signing in, find your Supabase Auth user UUID, then run:
 
 ```sh
@@ -67,6 +69,8 @@ Set `TEST_DATABASE_URL` to a disposable database's `webops_app` connection strin
 | `SUPABASE_JWT_AUDIENCE`         | Expected JWT audience, usually `authenticated`            |
 | `WEB_ORIGIN`                    | Allowed browser origin for API CORS                       |
 | `API_PORT`                      | API HTTP port                                             |
+| `WORKER_HEALTH_PORT`            | Worker health check HTTP port, default 4001               |
+| `WORKER_CONCURRENCY`            | Worker BullMQ concurrency, default 2                      |
 | `NEXT_PUBLIC_SUPABASE_URL`      | Browser Supabase Auth URL                                 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser public anon key                                   |
 | `NEXT_PUBLIC_API_URL`           | Browser API URL                                           |

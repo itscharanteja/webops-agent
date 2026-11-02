@@ -114,6 +114,14 @@ export default function ProofViewer() {
                     <strong>Locator:</strong> <code>{proof.locator}</code>
                   </Text>
                 )}
+                {proof.retainedUntil && (
+                  <Text size="sm" c="dimmed">
+                    <strong>Retention:</strong>{' '}
+                    {new Date(proof.retainedUntil).getTime() > Date.now()
+                      ? `Retained until ${new Date(proof.retainedUntil).toLocaleDateString()}`
+                      : `Retention expired on ${new Date(proof.retainedUntil).toLocaleDateString()}`}
+                  </Text>
+                )}
                 {box && (
                   <Text size="sm">
                     Bounding box: x {Math.round(box.x)}, y {Math.round(box.y)},
@@ -123,11 +131,20 @@ export default function ProofViewer() {
                 )}
               </Stack>
             </Card>
-            {!proof.available && (
+            {!proof.available &&
+            proof.retainedUntil &&
+            new Date(proof.retainedUntil).getTime() <= Date.now() ? (
+              <Alert color="gray" title="Proof retention expired">
+                The artifact was safely removed per the 90-day retention
+                schedule (expired on{' '}
+                {new Date(proof.retainedUntil).toLocaleDateString()}). Finding
+                and audit metadata remain preserved.
+              </Alert>
+            ) : !proof.available ? (
               <Alert color="orange" title="Proof unavailable">
                 This artifact could not be verified or is no longer retained.
               </Alert>
-            )}
+            ) : null}
             {proof.available && proof.kind === 'screenshot' && (
               <Card withBorder>
                 <Stack>
