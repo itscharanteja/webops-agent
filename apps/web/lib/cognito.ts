@@ -6,9 +6,11 @@ import {
   GlobalSignOutCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
-const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
-const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-const region = process.env.NEXT_PUBLIC_AWS_REGION ?? 'ap-south-1';
+const userPoolId =
+  process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || 'ap-south-1_S6YABFoAS';
+const clientId =
+  process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || 'vht8ek8tktsj8jkqgsom48an9';
+const region = process.env.NEXT_PUBLIC_AWS_REGION || 'ap-south-1';
 
 const cognitoClient = clientId
   ? new CognitoIdentityProviderClient({ region })

@@ -12,8 +12,15 @@ async function authorizedFetch(path: string, init: RequestInit = {}) {
     ...(init.headers as Record<string, string> | undefined),
   };
 
+  const apiBase =
+    process.env.NEXT_PUBLIC_API_URL !== undefined
+      ? process.env.NEXT_PUBLIC_API_URL
+      : typeof window !== 'undefined'
+        ? ''
+        : 'http://localhost:4000';
+
   return fetch(
-    `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}${path}`,
+    `${apiBase}${path}`,
     {
       ...init,
       headers,
