@@ -1,0 +1,14 @@
+node_modules/
+node_modules
+.next/
+dist/
+coverage/
+.env
+.env.local
+.venv/
+.artifacts/
+__pycache__/
+*.pyc
+*.tsbuildinfo
+apps/web/next-env.d.ts
+.DS_Store

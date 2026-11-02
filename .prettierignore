@@ -1,0 +1,8 @@
+AGENTS.md
+pnpm-lock.yaml
+node_modules/
+.next/
+dist/
+apps/web/next-env.d.ts
+packages/contracts/src/openapi.generated.ts
+packages/contracts/openapi.json

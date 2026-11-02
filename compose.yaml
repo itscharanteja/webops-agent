@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_DB: webops
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_dev_password
+    ports:
+      - '55433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/migrations:/migrations:ro
+      - ./infra/local/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d webops']
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7.4.2-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+  fixture:
+    image: python:3.12.7-slim
+    working_dir: /site
+    command: ['python', 'server.py']
+    ports:
+      - '8080:8080'
+      - '8081:8081'
+    volumes:
+      - ./tests/fixtures/site:/site:ro
+    networks:
+      default:
+        aliases: [fixture.test]
+volumes:
+  postgres_data:
+  redis_data:

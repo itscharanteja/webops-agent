@@ -1,0 +1,12 @@
+[project]
+name = "webops-scanner"
+version = "0.1.0"
+requires-python = "==3.12.*"
+dependencies = [
+  "fastmcp==2.12.5",
+  "playwright==1.56.0",
+  "pydantic==2.11.9",
+]
+
+[tool.uv]
+package = false

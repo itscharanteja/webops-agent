@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture home</title>
+  </head>
+  <body>
+    <h1>Fixture home</h1>
+    <nav>
+      <a href="/about.html">About</a> <a href="/catalog.html">Catalog</a>
+      <a href="/contact.html">Contact</a> <a href="/overflow.html">Overflow</a>
+    </nav>
+    <p><a href="/missing.html">Broken internal link</a></p>
+    <p>
+      <a href="http://localhost:8081/blocked.html">Unapproved destination</a>
+    </p>
+    <p>
+      <a href="http://169.254.169.254/latest/meta-data/"
+        >Metadata destination</a
+      >
+    </p>
+    <img src="/sample.svg" width="80" height="80" />
+    <img src="http://localhost:8081/blocked.png" alt="Blocked fixture" />
+    <script>
+      console.error('Fixture JavaScript error');
+    </script>
+  </body>
+</html>

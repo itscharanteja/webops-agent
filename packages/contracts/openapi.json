@@ -1,0 +1,647 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "WebOps API",
+    "version": "0.1.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/projects": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "baseUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048
+                  },
+                  "approvedOrigins": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uri",
+                      "maxLength": 2048
+                    },
+                    "minItems": 1,
+                    "maxItems": 10
+                  },
+                  "authorizationConfirmed": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "crawlLimits": {
+                    "type": "object",
+                    "properties": {
+                      "maxPages": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "default": 25
+                      },
+                      "maxDepth": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 5,
+                        "default": 3
+                      },
+                      "concurrency": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4,
+                        "default": 2
+                      },
+                      "navigationTimeoutMs": {
+                        "type": "integer",
+                        "minimum": 1000,
+                        "maximum": 30000,
+                        "default": 10000
+                      },
+                      "pageTimeoutMs": {
+                        "type": "integer",
+                        "minimum": 5000,
+                        "maximum": 120000,
+                        "default": 60000
+                      },
+                      "scanTimeoutMs": {
+                        "type": "integer",
+                        "minimum": 30000,
+                        "maximum": 1800000,
+                        "default": 900000
+                      },
+                      "requestsPerSecond": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 5,
+                        "default": 2
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "baseUrl",
+                  "approvedOrigins",
+                  "authorizationConfirmed"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "baseUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "approvedOrigins": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    },
+                    "crawlLimits": {
+                      "type": "object",
+                      "properties": {
+                        "maxPages": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "default": 25
+                        },
+                        "maxDepth": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 5,
+                          "default": 3
+                        },
+                        "concurrency": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4,
+                          "default": 2
+                        },
+                        "navigationTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 30000,
+                          "default": 10000
+                        },
+                        "pageTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 5000,
+                          "maximum": 120000,
+                          "default": 60000
+                        },
+                        "scanTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 30000,
+                          "maximum": 1800000,
+                          "default": 900000
+                        },
+                        "requestsPerSecond": {
+                          "type": "number",
+                          "minimum": 0.1,
+                          "maximum": 5,
+                          "default": 2
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "baseUrl",
+                    "approvedOrigins",
+                    "crawlLimits",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "baseUrl": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "approvedOrigins": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "format": "uri"
+                            }
+                          },
+                          "crawlLimits": {
+                            "type": "object",
+                            "properties": {
+                              "maxPages": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100,
+                                "default": 25
+                              },
+                              "maxDepth": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 5,
+                                "default": 3
+                              },
+                              "concurrency": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 4,
+                                "default": 2
+                              },
+                              "navigationTimeoutMs": {
+                                "type": "integer",
+                                "minimum": 1000,
+                                "maximum": 30000,
+                                "default": 10000
+                              },
+                              "pageTimeoutMs": {
+                                "type": "integer",
+                                "minimum": 5000,
+                                "maximum": 120000,
+                                "default": 60000
+                              },
+                              "scanTimeoutMs": {
+                                "type": "integer",
+                                "minimum": 30000,
+                                "maximum": 1800000,
+                                "default": 900000
+                              },
+                              "requestsPerSecond": {
+                                "type": "number",
+                                "minimum": 0.1,
+                                "maximum": 5,
+                                "default": 2
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "baseUrl",
+                          "approvedOrigins",
+                          "crawlLimits",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextOffset": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextOffset"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "baseUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "approvedOrigins": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    },
+                    "crawlLimits": {
+                      "type": "object",
+                      "properties": {
+                        "maxPages": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "default": 25
+                        },
+                        "maxDepth": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 5,
+                          "default": 3
+                        },
+                        "concurrency": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4,
+                          "default": 2
+                        },
+                        "navigationTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 30000,
+                          "default": 10000
+                        },
+                        "pageTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 5000,
+                          "maximum": 120000,
+                          "default": 60000
+                        },
+                        "scanTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 30000,
+                          "maximum": 1800000,
+                          "default": 900000
+                        },
+                        "requestsPerSecond": {
+                          "type": "number",
+                          "minimum": 0.1,
+                          "maximum": 5,
+                          "default": 2
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "baseUrl",
+                    "approvedOrigins",
+                    "crawlLimits",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "baseUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048
+                  },
+                  "approvedOrigins": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uri",
+                      "maxLength": 2048
+                    },
+                    "minItems": 1,
+                    "maxItems": 10
+                  },
+                  "crawlLimits": {
+                    "type": "object",
+                    "properties": {
+                      "maxPages": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "default": 25
+                      },
+                      "maxDepth": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 5,
+                        "default": 3
+                      },
+                      "concurrency": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4,
+                        "default": 2
+                      },
+                      "navigationTimeoutMs": {
+                        "type": "integer",
+                        "minimum": 1000,
+                        "maximum": 30000,
+                        "default": 10000
+                      },
+                      "pageTimeoutMs": {
+                        "type": "integer",
+                        "minimum": 5000,
+                        "maximum": 120000,
+                        "default": 60000
+                      },
+                      "scanTimeoutMs": {
+                        "type": "integer",
+                        "minimum": 30000,
+                        "maximum": 1800000,
+                        "default": 900000
+                      },
+                      "requestsPerSecond": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 5,
+                        "default": 2
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "authorizationConfirmed": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "baseUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "approvedOrigins": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    },
+                    "crawlLimits": {
+                      "type": "object",
+                      "properties": {
+                        "maxPages": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "default": 25
+                        },
+                        "maxDepth": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 5,
+                          "default": 3
+                        },
+                        "concurrency": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4,
+                          "default": 2
+                        },
+                        "navigationTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 30000,
+                          "default": 10000
+                        },
+                        "pageTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 5000,
+                          "maximum": 120000,
+                          "default": 60000
+                        },
+                        "scanTimeoutMs": {
+                          "type": "integer",
+                          "minimum": 30000,
+                          "maximum": 1800000,
+                          "default": 900000
+                        },
+                        "requestsPerSecond": {
+                          "type": "number",
+                          "minimum": 0.1,
+                          "maximum": 5,
+                          "default": 2
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "baseUrl",
+                    "approvedOrigins",
+                    "crawlLimits",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/v1"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

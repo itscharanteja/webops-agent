@@ -1,0 +1,21 @@
+{
+  "name": "webops-agent",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @webops/contracts build && pnpm --parallel --filter @webops/api --filter @webops/web",
+    "typecheck": "pnpm --filter @webops/contracts build && pnpm -r typecheck",
+    "test": "pnpm --filter @webops/contracts build && pnpm -r test",
+    "openapi:generate": "pnpm --filter @webops/contracts build && pnpm --filter @webops/api exec node --import tsx src/generate-openapi.ts && pnpm exec openapi-typescript packages/contracts/openapi.json -o packages/contracts/src/openapi.generated.ts",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3"
+  }
+}
