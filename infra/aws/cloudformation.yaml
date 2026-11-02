@@ -458,6 +458,8 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200-399
 
   HttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -675,7 +677,45 @@ Resources:
           ContainerPort: 3000
           TargetGroupArn: !Ref WebTargetGroup
 
+  # =========================================================================
+  # CloudFront Distribution (Public HTTPS with Amazon SSL Certificate)
+  # =========================================================================
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub '${EnvironmentName} CDN and SSL Termination'
+        Origins:
+          - Id: AlbOrigin
+            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginKeepaliveTimeout: 5
+              OriginReadTimeout: 60
+        DefaultCacheBehavior:
+          TargetOriginId: AlbOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          Compress: true
+
 Outputs:
+  CloudFrontUrl:
+    Description: 'HTTPS Public URL of the WebOps Application (SSL enabled)'
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
   LoadBalancerUrl:
     Description: 'Public URL of the Application Load Balancer'
     Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
