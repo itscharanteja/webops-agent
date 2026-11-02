@@ -17,8 +17,11 @@ const useSsl =
   databaseUrl.includes('sslmode=require') ||
   (process.env.NODE_ENV === 'production' && !databaseUrl.includes('localhost'));
 
+// Strip sslmode query param so pg-connection-string doesn't enforce strict CA verification
+const cleanDatabaseUrl = databaseUrl.replace(/[?&]sslmode=[^&]+/, '');
+
 const pool = new Pool({
-  connectionString: databaseUrl,
+  connectionString: cleanDatabaseUrl,
   max: 10,
   ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
 });
