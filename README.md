@@ -48,6 +48,16 @@ This automates:
 3. Deploying the CloudFormation template in `infra/aws/cloudformation.yaml` provisioning VPC, ECS Fargate cluster, S3 bucket, Amazon Cognito User Pool, and Application Load Balancer.
 4. Outputting the public Application Load Balancer DNS URL.
 
+## AWS Teardown (Remove All Cloud Resources)
+
+Whenever you want to delete all provisioned AWS resources to stop any credit usage:
+
+```sh
+./scripts/destroy-aws.sh
+```
+
+This will cleanly empty and remove the S3 proof bucket, terminate the CloudFormation stack (RDS PostgreSQL, ElastiCache Redis, ALB, ECS Fargate, Cognito, VPC), and delete all Amazon ECR repositories and container images.
+
 ## Environment Variables
 
 | Variable | Use |
