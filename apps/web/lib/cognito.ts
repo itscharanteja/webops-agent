@@ -69,8 +69,8 @@ export async function cognitoSignIn(
   pass: string,
 ): Promise<AuthSession> {
   if (!cognitoClient || !clientId) {
-    // Development local fallback session
-    const devToken = '00000000-0000-0000-0000-000000000001';
+    // Development local fallback session (standard v4 UUID)
+    const devToken = 'a0000000-0000-4000-8000-000000000001';
     setStoredSession(devToken, devToken, undefined, email);
     return { accessToken: devToken, email };
   }
