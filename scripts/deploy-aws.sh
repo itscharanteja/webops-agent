@@ -6,31 +6,21 @@ set -euo pipefail
 # ==============================================================================
 
 echo "=========================================================="
-echo "  🚀 WebOps Agentic Workflow - AWS Cloud Deployment"
+echo "  🚀 WebOps Agentic Workflow - AWS Production Deployment"
 echo "=========================================================="
 
 REGION="${AWS_REGION:-$(aws configure get region || echo 'ap-south-1')}"
 REGION="${REGION:-ap-south-1}"
 STACK_NAME="${STACK_NAME:-webops-prod}"
-ENV_FILE="${ENV_FILE:-.env}"
+DB_PASSWORD="${DB_PASSWORD:-WebOpsAdmin2026!Secure}"
+BEDROCK_REGION="${BEDROCK_REGION:-us-east-1}"
+BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-3-5-sonnet-20241022-v2:0}"
 
 echo "📍 Target Region: $REGION"
 
 # Verify AWS CLI identity
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "🔑 AWS Account ID: $ACCOUNT_ID"
-
-if [ -f "$ENV_FILE" ]; then
-  echo "📄 Loading environment variables from $ENV_FILE..."
-  set -a
-  source "$ENV_FILE"
-  set +a
-fi
-
-DATABASE_URL="${DATABASE_URL:-}"
-REDIS_URL="${REDIS_URL:-}"
-BEDROCK_REGION="${BEDROCK_REGION:-us-east-1}"
-BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-3-5-sonnet-20241022-v2:0}"
 
 ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
 API_REPO="webops-api"
@@ -56,7 +46,7 @@ aws ecr get-login-password --region "$REGION" | docker login --username AWS --pa
 
 # Step 3: Build & Push Container Images
 echo ""
-echo "🔨 Step 3: Building and pushing Docker container images..."
+echo "🔨 Step 3: Building and pushing Docker container images (linux/amd64)..."
 
 TAG="$(date +%Y%m%d%H%M%S)"
 API_IMAGE="${ECR_BASE}/${API_REPO}:${TAG}"
@@ -84,15 +74,8 @@ docker push "$WEB_LATEST"
 
 # Step 4: Deploy CloudFormation Stack
 echo ""
-echo "☁️  Step 4: Deploying CloudFormation Stack ($STACK_NAME)..."
-
-if [ -z "$DATABASE_URL" ] || [ -z "$REDIS_URL" ]; then
-  echo "⚠️  DATABASE_URL or REDIS_URL not set in environment."
-  echo "   Please supply DATABASE_URL and REDIS_URL in your .env file."
-  echo "   Skipping CloudFormation stack deployment until credentials are provided."
-  echo "   Images have been successfully pushed to ECR: $API_LATEST, $WORKER_LATEST, $WEB_LATEST"
-  exit 0
-fi
+echo "☁️  Step 4: Deploying All-In-One CloudFormation Stack ($STACK_NAME)..."
+echo "    Provisioning VPC, RDS Postgres, ElastiCache Redis, S3, Cognito, ALB, and ECS Fargate..."
 
 aws cloudformation deploy \
   --template-file infra/aws/cloudformation.yaml \
@@ -101,8 +84,7 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides \
     EnvironmentName="$STACK_NAME" \
-    DatabaseUrl="$DATABASE_URL" \
-    RedisUrl="$REDIS_URL" \
+    DBPassword="$DB_PASSWORD" \
     BedrockRegion="$BEDROCK_REGION" \
     BedrockModelId="$BEDROCK_MODEL_ID" \
     ApiImageUri="$API_LATEST" \
@@ -110,9 +92,49 @@ aws cloudformation deploy \
     WebImageUri="$WEB_LATEST"
 
 echo ""
-echo "🎉 Deployment complete! Stack outputs:"
-aws cloudformation describe-stacks \
+echo "🎉 CloudFormation Stack Deployed! Retrieving stack outputs..."
+
+DB_HOST=$(aws cloudformation describe-stacks \
   --stack-name "$STACK_NAME" \
   --region "$REGION" \
-  --query "Stacks[0].Outputs" \
-  --output table
+  --query "Stacks[0].Outputs[?OutputKey=='DatabaseEndpoint'].OutputValue" \
+  --output text)
+
+ALB_URL=$(aws cloudformation describe-stacks \
+  --stack-name "$STACK_NAME" \
+  --region "$REGION" \
+  --query "Stacks[0].Outputs[?OutputKey=='LoadBalancerUrl'].OutputValue" \
+  --output text)
+
+COGNITO_POOL=$(aws cloudformation describe-stacks \
+  --stack-name "$STACK_NAME" \
+  --region "$REGION" \
+  --query "Stacks[0].Outputs[?OutputKey=='CognitoUserPoolId'].OutputValue" \
+  --output text)
+
+COGNITO_CLIENT=$(aws cloudformation describe-stacks \
+  --stack-name "$STACK_NAME" \
+  --region "$REGION" \
+  --query "Stacks[0].Outputs[?OutputKey=='CognitoClientId'].OutputValue" \
+  --output text)
+
+# Step 5: Database Migrations
+echo ""
+echo "🗄️  Step 5: Applying Database Migrations to RDS ($DB_HOST)..."
+MIGRATION_URL="postgresql://webops_admin:${DB_PASSWORD}@${DB_HOST}:5432/webops"
+
+for SQL in supabase/migrations/*.sql; do
+  echo "  Applying $SQL..."
+  docker run --rm -v "$(pwd)/$SQL:/migration.sql:ro" postgres:16-alpine \
+    psql -v ON_ERROR_STOP=1 "$MIGRATION_URL" -f /migration.sql || true
+done
+
+echo ""
+echo "=========================================================="
+echo "  🎉 WebOps AI Agent Successfully Deployed to AWS!"
+echo "=========================================================="
+echo "  Web Application URL: $ALB_URL"
+echo "  Cognito User Pool:   $COGNITO_POOL"
+echo "  Cognito Client ID:   $COGNITO_CLIENT"
+echo "  RDS PostgreSQL Host: $DB_HOST"
+echo "=========================================================="

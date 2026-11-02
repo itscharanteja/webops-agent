@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'WebOps Agentic Workflow - 100% AWS Cloud-Native Infrastructure (Cognito, ECS Fargate, S3, Bedrock)'
+Description: 'WebOps Agentic Workflow - 100% AWS Cloud-Native All-In-One Infrastructure'
 
 Parameters:
   EnvironmentName:
@@ -18,14 +18,11 @@ Parameters:
     Type: String
     Default: '10.0.2.0/24'
     Description: 'CIDR block for public subnet 2'
-  DatabaseUrl:
+  DBPassword:
     Type: String
     NoEcho: true
-    Description: 'Postgres connection string (e.g. postgresql://user:pass@host:5432/webops)'
-  RedisUrl:
-    Type: String
-    NoEcho: true
-    Description: 'Redis connection string (e.g. redis://host:6379)'
+    Default: 'WebOpsAdmin2026!Secure'
+    Description: 'Master password for PostgreSQL database'
   BedrockRegion:
     Type: String
     Default: 'us-east-1'
@@ -228,6 +225,111 @@ Resources:
         - Key: Name
           Value: !Sub '${EnvironmentName}-ecs-sg'
 
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for RDS PostgreSQL'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EcsSecurityGroup
+          Description: 'Allow ECS tasks to PostgreSQL'
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: '0.0.0.0/0'
+          Description: 'Allow DB migration tooling from deploy machine'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: '0.0.0.0/0'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-db-sg'
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for ElastiCache Redis'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref EcsSecurityGroup
+          Description: 'Allow ECS tasks to Redis'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: '0.0.0.0/0'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-redis-sg'
+
+  # =========================================================================
+  # Database & Cache Subnet Groups
+  # =========================================================================
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: 'Subnets for WebOps RDS PostgreSQL'
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-db-subnet-group'
+
+  CacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: 'Subnets for WebOps ElastiCache Redis'
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+
+  # =========================================================================
+  # Amazon RDS PostgreSQL (db.t4g.micro)
+  # =========================================================================
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub '${EnvironmentName}-postgres'
+      Engine: postgres
+      EngineVersion: '16.3'
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: '20'
+      StorageType: gp3
+      DBName: webops
+      MasterUsername: webops_admin
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      PubliclyAccessible: true
+      BackupRetentionPeriod: 7
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-postgres'
+
+  # =========================================================================
+  # Amazon ElastiCache Redis (cache.t4g.micro)
+  # =========================================================================
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      ClusterName: !Sub '${EnvironmentName}-redis'
+      Engine: redis
+      CacheNodeType: cache.t4g.micro
+      NumCacheNodes: 1
+      CacheSubnetGroupName: !Ref CacheSubnetGroup
+      VpcSecurityGroupIds:
+        - !GetAtt RedisSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-redis'
+
   # =========================================================================
   # IAM Roles
   # =========================================================================
@@ -418,9 +520,9 @@ Resources:
             - Name: HOST
               Value: '0.0.0.0'
             - Name: DATABASE_URL
-              Value: !Ref DatabaseUrl
+              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops'
             - Name: REDIS_URL
-              Value: !Ref RedisUrl
+              Value: !Sub 'redis://${RedisCluster.RedisEndpoint.Address}:${RedisCluster.RedisEndpoint.Port}'
             - Name: COGNITO_USER_POOL_ID
               Value: !Ref UserPool
             - Name: COGNITO_CLIENT_ID
@@ -478,9 +580,11 @@ Resources:
             - Name: NODE_ENV
               Value: production
             - Name: DATABASE_URL
-              Value: !Ref DatabaseUrl
+              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops'
+            - Name: WORKER_DATABASE_URL
+              Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops'
             - Name: REDIS_URL
-              Value: !Ref RedisUrl
+              Value: !Sub 'redis://${RedisCluster.RedisEndpoint.Address}:${RedisCluster.RedisEndpoint.Port}'
             - Name: S3_BUCKET_NAME
               Value: !Ref ArtifactsBucket
             - Name: AWS_REGION
@@ -581,6 +685,12 @@ Outputs:
   CognitoClientId:
     Description: 'Amazon Cognito Web App Client ID'
     Value: !Ref UserPoolClient
+  DatabaseEndpoint:
+    Description: 'RDS PostgreSQL Hostname'
+    Value: !GetAtt Database.Endpoint.Address
+  DatabasePort:
+    Description: 'RDS PostgreSQL Port'
+    Value: !GetAtt Database.Endpoint.Port
   ArtifactsBucketName:
     Description: 'S3 bucket for scan evidence proof artifacts'
     Value: !Ref ArtifactsBucket
