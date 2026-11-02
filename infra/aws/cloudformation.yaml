@@ -296,7 +296,7 @@ Resources:
     Properties:
       DBInstanceIdentifier: !Sub '${EnvironmentName}-postgres'
       Engine: postgres
-      EngineVersion: '16.3'
+      EngineVersion: '16.9'
       DBInstanceClass: db.t4g.micro
       AllocatedStorage: '20'
       StorageType: gp3
@@ -307,7 +307,7 @@ Resources:
       VPCSecurityGroups:
         - !Ref DatabaseSecurityGroup
       PubliclyAccessible: true
-      BackupRetentionPeriod: 7
+      BackupRetentionPeriod: 0
       DeletionProtection: false
       Tags:
         - Key: Name
@@ -325,7 +325,7 @@ Resources:
       NumCacheNodes: 1
       CacheSubnetGroupName: !Ref CacheSubnetGroup
       VpcSecurityGroupIds:
-        - !GetAtt RedisSecurityGroup.GroupId
+        - !Ref RedisSecurityGroup
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-redis'
