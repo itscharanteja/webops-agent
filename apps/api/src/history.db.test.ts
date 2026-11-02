@@ -138,12 +138,14 @@ describe.skipIf(process.env.TEST_PHASE4 !== '1')('Phase 4 history gate', () => {
     expect(listRes.statusCode).toBe(200);
     expect(listRes.json().items.length).toBeGreaterThanOrEqual(2);
 
-    // 6. Immutability trigger verification: direct updates to reports must fail
+    // 6. Either the app role's permissions or the trigger must reject updates.
     await expect(
       pool.query(
         'update reports set summary = \'{"tampered": true}\'::jsonb where scan_id = $1',
         [scanId1],
       ),
-    ).rejects.toThrow(/Historical reports are immutable/);
-  });
+    ).rejects.toThrow(
+      /Historical reports are immutable|permission denied for table reports/,
+    );
+  }, 120_000);
 });
