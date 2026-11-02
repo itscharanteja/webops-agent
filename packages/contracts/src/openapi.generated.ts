@@ -631,9 +631,103 @@ export interface paths {
                                 failedCount: number;
                                 limitations: string[];
                             };
-                            issueSnapshot: unknown[];
+                            issueSnapshot: {
+                                /** Format: uuid */
+                                issueId: string;
+                                fingerprint: string;
+                                title: string;
+                                description: string;
+                                /** @enum {string} */
+                                priority: "P0" | "P1" | "P2" | "P3";
+                                /** @enum {string} */
+                                status: "open" | "in_progress" | "resolved" | "wont_fix";
+                                affectedUrl: string | null;
+                                ruleId: string;
+                                ruleVersion: string;
+                                /** @enum {string} */
+                                detectedSeverity: "P0" | "P1" | "P2" | "P3";
+                                confidence: number;
+                                facts: {
+                                    [key: string]: unknown;
+                                };
+                                explanation: {
+                                    [key: string]: unknown;
+                                };
+                                evidenceIds: string[];
+                                citations: {
+                                    /** Format: uuid */
+                                    evidenceId: string;
+                                    label: string;
+                                    /** @enum {string} */
+                                    kind: "screenshot" | "dom" | "console" | "network" | "url";
+                                }[];
+                            }[];
                             /** Format: date-time */
                             createdAt: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                scanId: string;
+                                /** Format: uuid */
+                                projectId: string;
+                                summary: {
+                                    [key: string]: unknown;
+                                };
+                                coverage: {
+                                    /** @enum {number} */
+                                    v: 1;
+                                    visitedUrls: string[];
+                                    skipped: {
+                                        url: string;
+                                        reason: string;
+                                    }[];
+                                    failedCount: number;
+                                    limitations: string[];
+                                };
+                                issueCount: number | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                            }[];
+                            nextOffset: number | null;
                         };
                     };
                 };

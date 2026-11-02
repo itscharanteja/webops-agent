@@ -1475,7 +1475,135 @@
                     },
                     "issueSnapshot": {
                       "type": "array",
-                      "items": {}
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "issueId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fingerprint": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "priority": {
+                            "type": "string",
+                            "enum": [
+                              "P0",
+                              "P1",
+                              "P2",
+                              "P3"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "in_progress",
+                              "resolved",
+                              "wont_fix"
+                            ]
+                          },
+                          "affectedUrl": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uri"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "ruleId": {
+                            "type": "string"
+                          },
+                          "ruleVersion": {
+                            "type": "string"
+                          },
+                          "detectedSeverity": {
+                            "type": "string",
+                            "enum": [
+                              "P0",
+                              "P1",
+                              "P2",
+                              "P3"
+                            ]
+                          },
+                          "confidence": {
+                            "type": "number"
+                          },
+                          "facts": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "explanation": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "evidenceIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "citations": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "evidenceId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "screenshot",
+                                    "dom",
+                                    "console",
+                                    "network",
+                                    "url"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "evidenceId",
+                                "label",
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "issueId",
+                          "fingerprint",
+                          "title",
+                          "description",
+                          "priority",
+                          "status",
+                          "affectedUrl",
+                          "ruleId",
+                          "ruleVersion",
+                          "detectedSeverity",
+                          "confidence",
+                          "facts",
+                          "explanation",
+                          "evidenceIds",
+                          "citations"
+                        ],
+                        "additionalProperties": false
+                      }
                     },
                     "createdAt": {
                       "type": "string",
@@ -1489,6 +1617,153 @@
                     "coverage",
                     "issueSnapshot",
                     "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}/reports": {
+      "get": {
+        "tags": [
+          "scans"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "scanId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "projectId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "summary": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "coverage": {
+                            "type": "object",
+                            "properties": {
+                              "v": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "visitedUrls": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "skipped": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "reason": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "url",
+                                    "reason"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "failedCount": {
+                                "type": "integer"
+                              },
+                              "limitations": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "v",
+                              "visitedUrls",
+                              "skipped",
+                              "failedCount",
+                              "limitations"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "issueCount": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "scanId",
+                          "projectId",
+                          "summary",
+                          "coverage",
+                          "issueCount",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextOffset": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextOffset"
                   ],
                   "additionalProperties": false
                 }

@@ -6,6 +6,7 @@ import {
   scanEventsResponseSchema,
   scanPagesResponseSchema,
   scanReportSchema,
+  reportListSchema,
 } from '@webops/contracts';
 import type { ProjectRepository } from './repository.js';
 import type { ScanRepository } from './scan-repository.js';
@@ -278,6 +279,29 @@ export function registerScanRoutes(app: FastifyInstance, deps: Deps) {
       const id = requireId((request.params as { id: string }).id);
       const result = await requireScans(deps).report(user, id);
       if (!result) return fail(404, 'NOT_FOUND', 'Report not found');
+      return result;
+    },
+  );
+
+  app.get(
+    '/v1/projects/:id/reports',
+    {
+      schema: {
+        tags: ['scans'],
+        response: { 200: zodToJsonSchema(reportListSchema) },
+      },
+    },
+    async (request) => {
+      const user = await deps.getUser(request);
+      const projectId = requireId((request.params as { id: string }).id);
+      const query = request.query as { limit?: string; offset?: string };
+      const result = await requireScans(deps).listReports(
+        user,
+        projectId,
+        Math.max(1, pageNumber(query.limit, 20, 100)),
+        pageNumber(query.offset, 0, 1_000_000),
+      );
+      if (!result) return fail(404, 'NOT_FOUND', 'Project not found');
       return result;
     },
   );

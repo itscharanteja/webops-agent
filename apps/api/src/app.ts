@@ -85,6 +85,21 @@ async function normalizedData(
 
 export async function buildApp(deps: Deps) {
   const app = Fastify({ logger: deps.logger ?? true, bodyLimit: 64 * 1024 });
+  app.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_req, body: string, done) => {
+      if (!body || body.trim() === '') {
+        done(null, undefined);
+        return;
+      }
+      try {
+        done(null, JSON.parse(body));
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    },
+  );
   await app.register(swagger, {
     openapi: {
       info: { title: 'WebOps API', version: '0.1.0' },

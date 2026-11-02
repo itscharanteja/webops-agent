@@ -1,5 +1,10 @@
 import { Pool, type PoolClient } from 'pg';
-import type { Scan, ScanEvent, ScanPage } from '@webops/contracts';
+import type {
+  ReportSummaryItem,
+  Scan,
+  ScanEvent,
+  ScanPage,
+} from '@webops/contracts';
 
 type ScanRow = {
   id: string;
@@ -111,6 +116,12 @@ export interface ScanRepository {
     offset: number,
   ): Promise<{ items: ScanPage[]; nextOffset: number | null } | null>;
   report(userId: string, id: string): Promise<Record<string, unknown> | null>;
+  listReports(
+    userId: string,
+    projectId: string,
+    limit: number,
+    offset: number,
+  ): Promise<{ items: ReportSummaryItem[]; nextOffset: number | null } | null>;
 }
 
 export class PgScanRepository implements ScanRepository {
@@ -354,6 +365,51 @@ export class PgScanRepository implements ScanRepository {
             createdAt: row.created_at.toISOString(),
           }
         : null;
+    });
+  }
+
+  listReports(
+    userId: string,
+    projectId: string,
+    limit: number,
+    offset: number,
+  ) {
+    return this.tx(userId, async (client) => {
+      const accessible = await client.query(
+        'select id from projects where id = $1',
+        [projectId],
+      );
+      if (!accessible.rowCount) return null;
+      const result = await client.query<{
+        id: string;
+        scan_id: string;
+        project_id: string;
+        summary: Record<string, unknown>;
+        coverage: Record<string, unknown>;
+        issue_count: number | null;
+        created_at: Date;
+      }>(
+        `select r.id, r.scan_id, s.project_id, r.summary, r.coverage,
+                (r.summary->>'issueCount')::int as issue_count, r.created_at
+         from reports r
+         join scans s on s.id = r.scan_id
+         where s.project_id = $1
+         order by r.created_at desc, r.id desc
+         limit $2 offset $3`,
+        [projectId, limit + 1, offset],
+      );
+      return {
+        items: result.rows.slice(0, limit).map((row) => ({
+          id: row.id,
+          scanId: row.scan_id,
+          projectId: row.project_id,
+          summary: row.summary,
+          coverage: row.coverage as any,
+          issueCount: row.issue_count,
+          createdAt: row.created_at.toISOString(),
+        })),
+        nextOffset: result.rows.length > limit ? offset + limit : null,
+      };
     });
   }
 }

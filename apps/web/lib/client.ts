@@ -14,15 +14,16 @@ async function authorizedFetch(path: string, init: RequestInit = {}) {
   if (!auth) throw new Error('Supabase is not configured');
   const { data, error } = await auth.auth.getSession();
   if (error || !data.session) throw new Error('Sign in to continue');
+  const headers: Record<string, string> = {
+    authorization: `Bearer ${data.session.access_token}`,
+    ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
+    ...(init.headers as Record<string, string> | undefined),
+  };
   return fetch(
     `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}${path}`,
     {
       ...init,
-      headers: {
-        authorization: `Bearer ${data.session.access_token}`,
-        'content-type': 'application/json',
-        ...init.headers,
-      },
+      headers,
     },
   );
 }

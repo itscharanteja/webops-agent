@@ -76,6 +76,13 @@ export default function ProjectPage() {
                 >
                   Issues board
                 </Button>
+                <Button
+                  component={Link}
+                  href={`/projects/${id}/reports`}
+                  variant="light"
+                >
+                  Reports
+                </Button>
                 <Button onClick={startScan} loading={busy}>
                   Start scan
                 </Button>

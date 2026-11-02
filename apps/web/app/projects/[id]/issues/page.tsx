@@ -168,12 +168,19 @@ export default function IssuesBoard() {
                   <Table.Tr key={issue.id}>
                     <Table.Td>
                       <Stack gap={2}>
-                        <Anchor
-                          component={Link}
-                          href={`/projects/${id}/issues/${issue.id}`}
-                        >
-                          {issue.title}
-                        </Anchor>
+                        <Group gap="xs">
+                          <Anchor
+                            component={Link}
+                            href={`/projects/${id}/issues/${issue.id}`}
+                          >
+                            {issue.title}
+                          </Anchor>
+                          {issue.notSeen && (
+                            <Badge color="orange" size="xs">
+                              Not seen
+                            </Badge>
+                          )}
+                        </Group>
                         <Text size="xs" c="dimmed" className="break-all">
                           {issue.affectedUrl}
                         </Text>

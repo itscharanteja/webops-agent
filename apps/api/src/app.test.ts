@@ -132,4 +132,41 @@ describe('project API boundary', () => {
     expect(created.statusCode).toBe(201);
     expect(created.json().approvedOrigins).toEqual(['https://example.com']);
   });
+
+  it('handles empty body gracefully when content-type is application/json', async () => {
+    const { app } = await fixtureApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/projects',
+      headers: {
+        authorization: `Bearer ${ownerA}`,
+        'content-type': 'application/json',
+      },
+      payload: '',
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('FST_ERR_VALIDATION');
+  });
+
+  it('allows POST without body even when content-type is application/json', async () => {
+    const { app, repository } = await fixtureApp();
+    const project = await repository.create(ownerA, {
+      name: 'A',
+      baseUrl: 'https://example.com/',
+      approvedOrigins: ['https://example.com'],
+      crawlLimits: crawlLimitsSchema.parse({}),
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/projects/${project.id}/scans`,
+      headers: {
+        authorization: `Bearer ${ownerA}`,
+        'content-type': 'application/json',
+      },
+      payload: '',
+    });
+    // Route handler was reached successfully, did not crash in content-type parser
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error.code).toBe('SCANS_UNAVAILABLE');
+  });
 });

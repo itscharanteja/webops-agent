@@ -4,9 +4,9 @@ WebOps is a website audit application for sites the user is authorized to test. 
 
 ## Current state
 
-**Phases 1–3 are implemented for the local fixture.** The repository has the pnpm/uv monorepo, shared contracts, Postgres schema and RLS, Supabase JWT verification, project CRUD and origin approval, a BullMQ worker, a bounded Playwright crawler, persistent scan pages/events, SSE replay, cancellation, deterministic checks, stored proof, an editable issues board, and Markdown exports. The API publishes OpenAPI at `/openapi.json`.
+**Phases 1–4 are implemented for the local fixture.** The repository has the pnpm/uv monorepo, shared contracts, Postgres schema and RLS, Supabase JWT verification, project CRUD and origin approval, a BullMQ worker, a bounded Playwright crawler, persistent scan pages/events, SSE replay, cancellation, deterministic checks, stored proof, an editable issues board, Markdown exports, immutable historical report snapshots with DB-level triggers, `not_seen` tracking across rescans, reports history list and snapshots viewer, and bounded FastMCP tools with citation validation fallback. The API publishes OpenAPI at `/openapi.json`.
 
-Immutable issue snapshots, report history, and optional explanation enrichment are Phase 4 work. The current report stores coverage and an empty issue snapshot. **Do not use this build to scan real external sites.** Filtering egress, quotas, and production hardening are Phase 5 work.
+**Do not use this build to scan real external sites.** Filtering egress, quotas, and production hardening are Phase 5 work.
 
 ## Local setup
 
@@ -24,6 +24,8 @@ If a previously initialized Compose volume has no `webops_app` role, run `docker
 For a Phase 1 volume that already has `webops_app`, apply Phase 2 with `docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d webops -f /migrations/0002_scans.sql`, then run `docker compose exec -T postgres psql -U postgres -d webops -c "alter role webops_worker login password 'webops_worker_dev_password'"`. These credentials are for local Compose only.
 
 For a Phase 2 volume, apply Phase 3 with `docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d webops -f /migrations/0003_findings.sql`. Proof images use the private local `.artifacts/` directory by default. For a private Supabase Storage bucket, set `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_STORAGE_BUCKET` on the API and worker only. Create the bucket as private before scanning. The UI receives only short-lived signed artifact URLs.
+
+For a Phase 3 volume, apply Phase 4 with `docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d webops -f /migrations/0004_history.sql` and `docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d webops -f /migrations/0005_not_seen.sql`.
 
 To seed the local fixture after signing in, find your Supabase Auth user UUID, then run:
 
@@ -48,7 +50,7 @@ cd services/scanner && uv run python -m unittest discover -s tests -v
 
 For a disposable Postgres database, apply the migration as its owner and run `psql -v ON_ERROR_STOP=1 -f tests/db/rls.sql`. This checks owner access and cross-project isolation. The full Phase 1 gate also requires a browser test with a configured Supabase Auth project; that has not run here.
 
-Set `TEST_DATABASE_URL` to a disposable database's `webops_app` connection string and run `corepack pnpm --filter @webops/api test` to include the Phase 1 database-backed API test. Keep Compose and the worker running, then use `node --env-file=.env scripts/test-gates.mjs phase2` for the crawl gate or `node --env-file=.env scripts/test-gates.mjs phase3` for findings and proof. Use `all` to run both gates. The Phase 3 gate checks all seeded defects, authorized proof images, edits and revisions, stale version conflicts, Markdown safety, rescan stability, and cross-project isolation. The unlinked `untitled.html` fixture covers missing titles and first-party 5xx failures.
+Set `TEST_DATABASE_URL` to a disposable database's `webops_app` connection string and run `corepack pnpm --filter @webops/api test` to include the Phase 1 database-backed API test. Keep Compose and the worker running, then use `node --env-file=.env scripts/test-gates.mjs phase2` for the crawl gate, `node --env-file=.env scripts/test-gates.mjs phase3` for findings and proof, or `node --env-file=.env scripts/test-gates.mjs phase4` for immutable report snapshots and history. Use `all` to run all gates. The Phase 3 gate checks all seeded defects, authorized proof images, edits and revisions, stale version conflicts, Markdown safety, rescan stability, and cross-project isolation. The Phase 4 gate verifies report immutability, frozen issue snapshots, reports history listing, and `not_seen` issue tracking across repeat scans. The unlinked `untitled.html` fixture covers missing titles and first-party 5xx failures.
 
 ## Environment
 

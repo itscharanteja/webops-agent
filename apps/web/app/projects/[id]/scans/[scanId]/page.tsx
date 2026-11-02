@@ -17,7 +17,13 @@ import {
   Text,
   Title,
 } from '@mantine/core';
-import type { Project, Scan, ScanEvent, ScanPage } from '@webops/contracts';
+import type {
+  Project,
+  ReportIssueSnapshotItem,
+  Scan,
+  ScanEvent,
+  ScanPage,
+} from '@webops/contracts';
 import { apiFetch, apiStream } from '../../../../../lib/client';
 
 type Coverage = {
@@ -26,7 +32,11 @@ type Coverage = {
   failedCount: number;
   limitations: string[];
 };
-type Report = { coverage: Coverage };
+type Report = {
+  coverage: Coverage;
+  issueSnapshot?: ReportIssueSnapshotItem[];
+  createdAt?: string;
+};
 const terminal = new Set(['completed', 'partial', 'failed', 'cancelled']);
 
 export default function LiveScanPage() {
@@ -294,6 +304,85 @@ export default function LiveScanPage() {
                     </Text>
                   ))}
                 </>
+              )}
+            </Stack>
+          </Card>
+        )}
+        {report && (
+          <Card withBorder>
+            <Stack>
+              <Group justify="space-between">
+                <Title order={2}>Report Snapshot</Title>
+                <Badge color="gray">
+                  {report.issueSnapshot?.length ?? 0} findings captured
+                </Badge>
+              </Group>
+              <Text size="xs" c="dimmed">
+                Immutable record frozen at scan completion. Issues and evidence
+                remain as captured, even if current issues board entries are
+                subsequently modified.
+              </Text>
+              {!report.issueSnapshot || report.issueSnapshot.length === 0 ? (
+                <Text c="dimmed">No findings recorded in this report.</Text>
+              ) : (
+                <Table striped highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Captured issue</Table.Th>
+                      <Table.Th>Rule</Table.Th>
+                      <Table.Th>Priority</Table.Th>
+                      <Table.Th>Proof citations</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {report.issueSnapshot.map((item, index) => (
+                      <Table.Tr key={`${item.issueId}-${index}`}>
+                        <Table.Td>
+                          <Stack gap={2}>
+                            <Text fw={600}>{item.title}</Text>
+                            <Text size="xs" c="dimmed" className="break-all">
+                              {item.affectedUrl}
+                            </Text>
+                          </Stack>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge size="xs" variant="outline">
+                            {item.ruleId}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge
+                            size="xs"
+                            color={
+                              item.priority === 'P0'
+                                ? 'red'
+                                : item.priority === 'P1'
+                                  ? 'orange'
+                                  : item.priority === 'P2'
+                                    ? 'yellow'
+                                    : 'gray'
+                            }
+                          >
+                            {item.priority}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs">
+                            {item.citations.map((c) => (
+                              <Anchor
+                                key={c.evidenceId}
+                                component={Link}
+                                href={`/projects/${id}/scans/${scanId}/evidence/${c.evidenceId}`}
+                              >
+                                {c.label || c.kind}
+                              </Anchor>
+                            ))}
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
               )}
             </Stack>
           </Card>

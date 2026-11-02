@@ -148,14 +148,62 @@ export const scanCoverageSchema = z.object({
   failedCount: z.number().int(),
   limitations: z.array(z.string()),
 });
+export const citationSchema = z.object({
+  evidenceId: z.string().uuid(),
+  label: z.string(),
+  kind: evidenceKindSchema,
+});
+
+export const reportIssueSnapshotItemSchema = z.object({
+  issueId: z.string().uuid(),
+  fingerprint: z.string(),
+  title: z.string(),
+  description: z.string(),
+  priority: z.enum(priorities),
+  status: z.enum(issueStatuses),
+  affectedUrl: z.string().url().nullable(),
+  ruleId: z.string(),
+  ruleVersion: z.string(),
+  detectedSeverity: z.enum(priorities),
+  confidence: z.number(),
+  facts: z.record(z.unknown()),
+  explanation: z.record(z.unknown()),
+  evidenceIds: z.array(z.string().uuid()),
+  citations: z.array(
+    z.object({
+      evidenceId: z.string().uuid(),
+      label: z.string(),
+      kind: z.enum(evidenceKinds),
+    }),
+  ),
+});
+export type ReportIssueSnapshotItem = z.infer<
+  typeof reportIssueSnapshotItemSchema
+>;
+
 export const scanReportSchema = z.object({
   id: z.string().uuid(),
   scanId: z.string().uuid(),
   summary: z.record(z.unknown()),
   coverage: scanCoverageSchema,
-  issueSnapshot: z.array(z.unknown()),
+  issueSnapshot: z.array(reportIssueSnapshotItemSchema),
   createdAt: z.string().datetime(),
 });
+
+export const reportSummaryItemSchema = z.object({
+  id: z.string().uuid(),
+  scanId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  summary: z.record(z.unknown()),
+  coverage: scanCoverageSchema,
+  issueCount: z.number().int().nullable(),
+  createdAt: z.string().datetime(),
+});
+export const reportListSchema = z.object({
+  items: z.array(reportSummaryItemSchema),
+  nextOffset: z.number().int().nullable(),
+});
+export type ReportSummaryItem = z.infer<typeof reportSummaryItemSchema>;
 
 const scannerHeader = z.object({
   v: z.literal(SCANNER_PROTOCOL_VERSION),
@@ -267,11 +315,6 @@ export const issuePatchSchema = z
     status: issueStatusSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0);
-export const citationSchema = z.object({
-  evidenceId: z.string().uuid(),
-  label: z.string(),
-  kind: evidenceKindSchema,
-});
 export const observationSchema = z.object({
   id: z.string().uuid(),
   scanId: z.string().uuid(),

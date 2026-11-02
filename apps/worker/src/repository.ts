@@ -1,5 +1,9 @@
 import { Pool, type PoolClient } from 'pg';
-import type { ScanEvent, ScannerMessage } from '@webops/contracts';
+import type {
+  ReportIssueSnapshotItem,
+  ScanEvent,
+  ScannerMessage,
+} from '@webops/contracts';
 import type { StoredArtifact } from './artifact-store.js';
 import { fingerprint } from './fingerprint.js';
 
@@ -385,13 +389,106 @@ export class WorkerRepository {
             error,
           ],
         );
+        if (status === 'completed') {
+          await client
+            .query('select app.mark_not_seen_for_completed_scan($1, $2)', [
+              scanId,
+              coverage.visitedUrls,
+            ])
+            .catch(() => undefined);
+        }
+        const obsResult = await client.query<{
+          issue_id: string;
+          fingerprint: string;
+          title: string;
+          description: string;
+          priority: ReportIssueSnapshotItem['priority'];
+          status: ReportIssueSnapshotItem['status'];
+          affected_url: string | null;
+          observation_id: string;
+          rule_id: string;
+          rule_version: string;
+          detected_severity: ReportIssueSnapshotItem['detectedSeverity'];
+          confidence: string;
+          facts: Record<string, unknown>;
+          explanation: Record<string, unknown>;
+        }>(
+          `select
+             i.id as issue_id,
+             i.fingerprint,
+             i.title,
+             i.description,
+             i.priority,
+             i.status,
+             p.normalized_url as affected_url,
+             o.id as observation_id,
+             o.rule_id,
+             o.rule_version,
+             o.detected_severity,
+             o.confidence::text as confidence,
+             o.facts,
+             o.explanation_snapshot as explanation
+           from issue_observations o
+           join issues i on i.id = o.issue_id
+           left join scan_pages p on p.id = o.page_id
+           where o.scan_id = $1
+           order by o.created_at asc, o.id asc`,
+          [scanId],
+        );
+        const obsIds = obsResult.rows.map((row) => row.observation_id);
+        const citations = obsIds.length
+          ? await client.query<{
+              observation_id: string;
+              evidence_id: string;
+              label: string;
+              kind: 'screenshot' | 'dom' | 'console' | 'network' | 'url';
+            }>(
+              `select c.observation_id, c.evidence_id, c.label, e.kind
+               from observation_evidence c
+               join evidence e on e.id = c.evidence_id
+               where c.observation_id = any($1::uuid[])
+               order by c.observation_id, c.citation_order asc`,
+              [obsIds],
+            )
+          : { rows: [] };
+
+        const snapshot: ReportIssueSnapshotItem[] = obsResult.rows.map(
+          (row) => {
+            const rowCitations = citations.rows
+              .filter((c) => c.observation_id === row.observation_id)
+              .map((c) => ({
+                evidenceId: c.evidence_id,
+                label: c.label,
+                kind: c.kind,
+              }));
+            return {
+              issueId: row.issue_id,
+              fingerprint: row.fingerprint,
+              title: row.title,
+              description: row.description,
+              priority: row.priority,
+              status: row.status,
+              affectedUrl: row.affected_url,
+              ruleId: row.rule_id,
+              ruleVersion: row.rule_version,
+              detectedSeverity: row.detected_severity,
+              confidence: Number(row.confidence),
+              facts: row.facts,
+              explanation: row.explanation,
+              evidenceIds: rowCitations.map((c) => c.evidenceId),
+              citations: rowCitations,
+            };
+          },
+        );
+
         await client.query(
           `insert into reports (scan_id, summary, coverage, issue_snapshot)
-           values ($1,$2,$3,'[]'::jsonb) on conflict (scan_id) do nothing`,
+           values ($1, $2, $3, $4) on conflict (scan_id) do nothing`,
           [
             scanId,
-            JSON.stringify({ v: 1, status, issueCount: null }),
+            JSON.stringify({ v: 1, status, issueCount: snapshot.length }),
             JSON.stringify({ v: 1, ...coverage }),
+            JSON.stringify(snapshot),
           ],
         );
       }
@@ -404,6 +501,21 @@ export class WorkerRepository {
         status === 'completed' ? 'Scan completed' : `Scan ${status}`,
         { terminal: true, status },
       );
+    });
+  }
+
+  async enrichObservation(
+    scanId: string,
+    observationId: string,
+    explanation: Record<string, unknown>,
+  ): Promise<boolean> {
+    return this.tx(scanId, async (client) => {
+      const result = await client.query(
+        `update issue_observations set explanation_snapshot = $2
+         where id = $1 and scan_id = $3`,
+        [observationId, JSON.stringify(explanation), scanId],
+      );
+      return (result.rowCount ?? 0) > 0;
     });
   }
 

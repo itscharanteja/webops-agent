@@ -105,6 +105,9 @@ export default function IssuePage() {
             <Group>
               <Badge>{issue.latestRuleId}</Badge>
               <Badge color="gray">Confidence {issue.confidence ?? '—'}</Badge>
+              {issue.notSeen && (
+                <Badge color="orange">Not seen in latest scan</Badge>
+              )}
               <Text size="sm">
                 First seen {new Date(issue.firstSeen).toLocaleString()} · Last
                 seen {new Date(issue.lastSeen).toLocaleString()}
