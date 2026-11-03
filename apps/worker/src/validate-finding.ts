@@ -106,6 +106,12 @@ export function validateFinding(finding: Finding): void {
         facts.documentWidth > facts.viewportWidth + 8;
       break;
     }
+    case 'VISUAL_OVERLAP_CLIPPING':
+    case 'CONTRAST_DEFECT':
+    case 'UX_CONVERSION_FRICTION':
+    case 'BROKEN_VISUAL_STATE':
+      valid = hasScreenshot && text(finding.observed);
+      break;
   }
   if (!valid)
     throw new Error(

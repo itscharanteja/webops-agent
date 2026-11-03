@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from collections import deque
 from dataclasses import dataclass, field
 from hashlib import sha256
@@ -17,23 +18,10 @@ from playwright.async_api import async_playwright, BrowserContext, Page, Route, 
 from .policy import PolicyError, UrlPolicy, normalize_url, origin_of, safe_text, safe_url
 from .protocol import DonePayload, EventPayload, FindingPayload, PagePayload, PageScreenshotPayload, ProtocolMessage, ScanInput
 from .checks import CHECK_VERSION, VIEWPORTS, finding, run_dom_checks, screenshot_proof
-from .bedrock import explain_finding_with_bedrock
-from .tools import enrich_explanation_with_fallback
-import os
-
-
-def maybe_enrich_finding(item: dict) -> dict:
-    if os.getenv("ENABLE_BEDROCK_AI") in ("1", "true") or os.getenv("BEDROCK_MODEL_ID"):
-        evidence_ids = [str(i) for i in range(len(item.get("evidence", [])))]
-        suggestion = explain_finding_with_bedrock(item, evidence_ids)
-        if suggestion:
-            enrichment = enrich_explanation_with_fallback(item, suggestion, set(evidence_ids))
-            if enrichment.get("modelEnriched"):
-                item["description"] = enrichment["summary"]
-                item["impact"] = enrichment["impact"]
-                item["suggested_fix"] = enrichment["suggestedFix"]
-                item["facts"]["aiEnriched"] = True
-    return item
+from .taxonomy import classify_site_context
+from .visual_agent import run_visual_audit
+from .interaction_agent import explore_page_interactions
+from .crawl_prioritizer import prioritize_links
 
 
 def key(prefix: str, value: str) -> str:
@@ -94,10 +82,12 @@ class Crawler:
         self.rate_locks: dict[str, asyncio.Lock] = {}
         self.next_request_at: dict[str, float] = {}
         self.results: dict[str, PageResult] = {}
+        self.context_info: dict | None = None
 
     def send_finding(self, key_str: str, item: dict) -> None:
-        enriched = maybe_enrich_finding(item)
-        self.emitter.send("finding", key_str, enriched)
+        # Proof IDs are assigned by the worker after storage. The scanner must not
+        # ask a model to cite positional placeholders before those IDs exist.
+        self.emitter.send("finding", key_str, item)
 
     def skip(self, url: str, reason: str) -> None:
         if len(self.skipped) < 500:
@@ -223,10 +213,23 @@ class Crawler:
             if result.status is not None and result.status < 400:
                 for viewport in VIEWPORTS:
                     try:
+                        # 1. Interactive Exploration Agent (dismiss banners, expand mobile nav, scroll)
+                        interaction_res = await explore_page_interactions(page, url, viewport, emitter=self.emitter)
+                        for rev_link in interaction_res.get("revealed_links", []):
+                            result.links.append({"url": rev_link, "text": "Discovered via interaction", "locator": "dynamic interaction"})
+
+                        # 2. Run Deterministic DOM Checks
                         findings, screenshot = await run_dom_checks(page, url, viewport)
                         result.findings.extend(findings)
                         if screenshot:
                             result.screenshots.append((viewport, screenshot))
+                            # 3. Multimodal Visual Agent Audit on Rendered Screenshot
+                            try:
+                                raw_bytes = base64.b64decode(screenshot["artifact_base64"])
+                                visual_findings = await run_visual_audit(page, url, viewport, raw_bytes, emitter=self.emitter)
+                                result.findings.extend(visual_findings)
+                            except Exception as v_err:
+                                sys.stderr.write(f"Visual audit skipped: {safe_text(str(v_err), 150)}\n")
                     except Exception as error:
                         self.complete = False
                         self.limitations.append(f"Checks incomplete for {safe_url(url)} ({viewport}): {safe_text(str(error), 180)}")
@@ -278,6 +281,7 @@ class Crawler:
                     if not batch:
                         continue
                     results = await asyncio.gather(*(self.inspect(context, url, depth) for url, depth in batch))
+                    new_pending_links: list[tuple[str, int, str]] = []
                     for result in results:
                         self.visited.append(safe_url(result.url))
                         self.results[result.url] = result
@@ -300,6 +304,31 @@ class Crawler:
                         for item in result.findings:
                             self.send_finding(key("finding", result.url + item["rule_id"] + item["target"] + str(item["facts"].get("viewport"))), item)
                         self.emit_page_findings(result)
+                        if result.depth == 0 and self.context_info is None:
+                            self.context_info = classify_site_context(result.url, result.title, links=result.links)
+                            confidence_pct = int(self.context_info["confidence"] * 100)
+                            if self.context_info["archetype"] == "personal_portfolio":
+                                self.emitter.event(
+                                    "taxonomy", "info",
+                                    f"[Taxonomy Classifier] Identified site as 'Personal Portfolio / Resume' (Confidence: {confidence_pct}%).",
+                                    key("agent:tax", result.url),
+                                    {
+                                        "archetype": "personal_portfolio",
+                                        "confidence": self.context_info["confidence"],
+                                        "signals": self.context_info.get("detected_signals", []),
+                                    },
+                                )
+                            elif self.context_info["is_product_or_service"]:
+                                self.emitter.event(
+                                    "taxonomy", "info",
+                                    f"[Taxonomy Classifier] Classified site as '{self.context_info['category_label']}' (Confidence: {confidence_pct}%).",
+                                    key("agent:tax", result.url),
+                                    {
+                                        "archetype": self.context_info["archetype"],
+                                        "confidence": self.context_info["confidence"],
+                                        "category": self.context_info["category_label"],
+                                    },
+                                )
                         for link_item in result.links:
                             raw_link = link_item["url"]
                             try:
@@ -315,9 +344,20 @@ class Crawler:
                                 self.skip(link, "Depth limit")
                                 self.complete = False
                             else:
-                                pending.append((link, result.depth + 1))
+                                new_pending_links.append((link, result.depth + 1, safe_text(link_item.get("text", ""), 100)))
                                 self.emitter.event("crawl", "debug", f"Discovered {safe_url(link)}", key("discover", link),
                                                    {"source": safe_url(result.url), "destination": safe_url(link)})
+                    if new_pending_links:
+                        all_pending = [(item[0], item[1], "") for item in pending] + new_pending_links
+                        ranked = prioritize_links(all_pending, self.request.limits.maxPages - len(self.visited))
+                        pending = deque([(url, depth) for url, depth, _ in ranked])
+                        top_route = pending[0][0] if pending else ""
+                        self.emitter.event(
+                            "agent:navigation", "info",
+                            f"[Navigation Agent] Prioritized {len(pending)} pending routes. Next target: {safe_url(top_route)}",
+                            key("agent:nav", top_route + str(len(pending))),
+                            {"nextTarget": safe_url(top_route), "queueSize": len(pending)},
+                        )
                 if pending:
                     self.complete = False
                     for url, _ in pending:
@@ -388,6 +428,7 @@ class Crawler:
                       "error": target.limitation, "capturedAt": target.visited_at}}],
                     {"url": source_safe, "destination": dest_safe, "status": target.status})
                 self.send_finding(key("finding", source.url + "BROKEN_INTERNAL_LINK" + destination), item)
+
 
 
 async def main() -> None:

@@ -83,7 +83,8 @@ class FindingPayload(BaseModel):
     page_url: str = Field(max_length=2048)
     rule_id: Literal["HTTP_PAGE_ERROR", "BROKEN_INTERNAL_LINK", "JS_CONSOLE_ERROR",
                      "FAILED_FIRST_PARTY_REQUEST", "MISSING_IMAGE_ALT", "UNLABELED_FORM_CONTROL",
-                     "MISSING_PAGE_TITLE", "HORIZONTAL_OVERFLOW"]
+                     "MISSING_PAGE_TITLE", "HORIZONTAL_OVERFLOW", "VISUAL_OVERLAP_CLIPPING",
+                     "CONTRAST_DEFECT", "UX_CONVERSION_FRICTION", "BROKEN_VISUAL_STATE"]
     rule_version: Literal["1"] = "1"
     target: str = Field(min_length=1, max_length=1000)
     title: str = Field(min_length=1, max_length=200)
