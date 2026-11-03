@@ -12,6 +12,7 @@ import {
   Container,
   Group,
   Loader,
+  Modal,
   Stack,
   Table,
   Text,
@@ -27,6 +28,8 @@ export default function ProjectPage() {
   const [scans, setScans] = useState<Scan[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [deleteOpened, setDeleteOpened] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   useEffect(() => {
     Promise.all([
       apiFetch(`/v1/projects/${id}`),
@@ -50,6 +53,21 @@ export default function ProjectPage() {
       setError(cause instanceof Error ? cause.message : 'Could not start scan');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleDeleteProject() {
+    setDeleting(true);
+    setError('');
+    try {
+      await apiFetch(`/v1/projects/${id}`, { method: 'DELETE' });
+      router.push('/projects');
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : 'Could not delete project',
+      );
+      setDeleting(false);
+      setDeleteOpened(false);
     }
   }
   return (
@@ -85,6 +103,13 @@ export default function ProjectPage() {
                 </Button>
                 <Button onClick={startScan} loading={busy}>
                   Start scan
+                </Button>
+                <Button
+                  color="red"
+                  variant="subtle"
+                  onClick={() => setDeleteOpened(true)}
+                >
+                  Delete project
                 </Button>
               </Group>
             </Group>
@@ -149,6 +174,68 @@ export default function ProjectPage() {
                 )}
               </Stack>
             </Card>
+
+            {/* Danger Zone */}
+            <Card
+              withBorder
+              padding="lg"
+              radius="md"
+              style={{ borderColor: 'var(--mantine-color-red-4)' }}
+            >
+              <Group justify="space-between" align="center" wrap="wrap">
+                <div>
+                  <Text fw={700} c="red.9">
+                    Danger Zone
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Permanently delete this project and all its associated
+                    scans, reports, issues, and evidence.
+                  </Text>
+                </div>
+                <Button
+                  color="red"
+                  variant="light"
+                  onClick={() => setDeleteOpened(true)}
+                >
+                  Delete Project
+                </Button>
+              </Group>
+            </Card>
+
+            {/* Confirmation Modal */}
+            <Modal
+              opened={deleteOpened}
+              onClose={() => !deleting && setDeleteOpened(false)}
+              title="Delete Project"
+              centered
+            >
+              <Stack gap="md">
+                <Text size="sm">
+                  Are you sure you want to permanently delete{' '}
+                  <strong>{project.name}</strong>?
+                </Text>
+                <Alert color="red" title="Irreversible Action">
+                  This action cannot be undone. All scans, reports, issues board
+                  entries, and evidence snapshots will be permanently removed.
+                </Alert>
+                <Group justify="flex-end" gap="xs">
+                  <Button
+                    variant="default"
+                    onClick={() => setDeleteOpened(false)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    color="red"
+                    onClick={handleDeleteProject}
+                    loading={deleting}
+                  >
+                    Delete Permanently
+                  </Button>
+                </Group>
+              </Stack>
+            </Modal>
           </>
         )}
       </Stack>

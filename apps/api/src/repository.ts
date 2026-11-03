@@ -27,6 +27,7 @@ export interface ProjectRepository {
     data: ProjectData,
     reapproved: boolean,
   ): Promise<Project | null>;
+  delete(userId: string, id: string): Promise<boolean>;
 }
 
 type ProjectRow = {
@@ -147,6 +148,26 @@ export class PgProjectRepository implements ProjectRepository {
         ],
       );
       return result.rows[0] ? mapProject(result.rows[0]) : null;
+    });
+  }
+
+  delete(userId: string, id: string) {
+    return this.transaction(userId, async (client) => {
+      try {
+        const funcResult = await client.query<{ deleted: boolean }>(
+          'select app.delete_project($1::uuid) as deleted',
+          [id],
+        );
+        if (funcResult.rows[0]?.deleted !== undefined) {
+          return Boolean(funcResult.rows[0].deleted);
+        }
+      } catch {
+        // Fallback to direct table delete
+      }
+      const result = await client.query('delete from projects where id = $1', [
+        id,
+      ]);
+      return (result.rowCount ?? 0) > 0;
     });
   }
 }

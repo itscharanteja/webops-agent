@@ -35,7 +35,7 @@ export interface paths {
                                 baseUrl: string;
                                 approvedOrigins: string[];
                                 crawlLimits: {
-                                    /** @default 25 */
+                                    /** @default 100 */
                                     maxPages: number;
                                     /** @default 3 */
                                     maxDepth: number;
@@ -77,7 +77,7 @@ export interface paths {
                         /** @enum {boolean} */
                         authorizationConfirmed: true;
                         crawlLimits?: {
-                            /** @default 25 */
+                            /** @default 100 */
                             maxPages?: number;
                             /** @default 3 */
                             maxDepth?: number;
@@ -110,7 +110,7 @@ export interface paths {
                             baseUrl: string;
                             approvedOrigins: string[];
                             crawlLimits: {
-                                /** @default 25 */
+                                /** @default 100 */
                                 maxPages: number;
                                 /** @default 3 */
                                 maxDepth: number;
@@ -170,7 +170,7 @@ export interface paths {
                             baseUrl: string;
                             approvedOrigins: string[];
                             crawlLimits: {
-                                /** @default 25 */
+                                /** @default 100 */
                                 maxPages: number;
                                 /** @default 3 */
                                 maxDepth: number;
@@ -194,7 +194,26 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Project deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch: {
@@ -214,7 +233,7 @@ export interface paths {
                         baseUrl?: string;
                         approvedOrigins?: string[];
                         crawlLimits?: {
-                            /** @default 25 */
+                            /** @default 100 */
                             maxPages?: number;
                             /** @default 3 */
                             maxDepth?: number;
@@ -249,7 +268,7 @@ export interface paths {
                             baseUrl: string;
                             approvedOrigins: string[];
                             crawlLimits: {
-                                /** @default 25 */
+                                /** @default 100 */
                                 maxPages: number;
                                 /** @default 3 */
                                 maxDepth: number;

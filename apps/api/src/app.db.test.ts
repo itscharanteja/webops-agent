@@ -63,6 +63,30 @@ describe.skipIf(!databaseUrl)('project API with Postgres RLS', () => {
         },
       });
       expect(unapprovedChange.statusCode).toBe(400);
+
+      // Non-owner cannot delete
+      const nonOwnerDelete = await app.inject({
+        method: 'DELETE',
+        url: `/v1/projects/${id}`,
+        headers: { authorization: `Bearer ${other}` },
+      });
+      expect(nonOwnerDelete.statusCode).toBe(404);
+
+      // Owner can delete
+      const ownerDelete = await app.inject({
+        method: 'DELETE',
+        url: `/v1/projects/${id}`,
+        headers: { authorization: `Bearer ${owner}` },
+      });
+      expect(ownerDelete.statusCode).toBe(204);
+
+      // Project is gone
+      const deletedRead = await app.inject({
+        method: 'GET',
+        url: `/v1/projects/${id}`,
+        headers: { authorization: `Bearer ${owner}` },
+      });
+      expect(deletedRead.statusCode).toBe(404);
     } finally {
       await app.close();
       await pool.end();

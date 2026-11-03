@@ -19,13 +19,10 @@ async function authorizedFetch(path: string, init: RequestInit = {}) {
         ? ''
         : 'http://localhost:4000';
 
-  return fetch(
-    `${apiBase}${path}`,
-    {
-      ...init,
-      headers,
-    },
-  );
+  return fetch(`${apiBase}${path}`, {
+    ...init,
+    headers,
+  });
 }
 
 export async function apiFetch(path: string, init: RequestInit = {}) {
@@ -36,7 +33,11 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
       body?.error?.message ?? `Request failed (${response.status})`,
     );
   }
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 export async function apiBlob(path: string): Promise<Blob> {

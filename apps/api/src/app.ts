@@ -35,6 +35,7 @@ type Deps = {
   issueRepository?: IssueRepository;
   healthCheck?: () => Promise<{ database: boolean; redis: boolean }>;
   rateLimitMax?: number;
+  allowExternalScans?: boolean;
 };
 type ApiError = Error & { statusCode?: number; code?: string };
 const uuid =
@@ -137,7 +138,10 @@ export async function buildApp(deps: Deps) {
         'access-control-allow-headers',
         'authorization, content-type, last-event-id, accept, x-request-id',
       );
-      reply.header('access-control-allow-methods', 'GET, POST, PATCH, OPTIONS');
+      reply.header(
+        'access-control-allow-methods',
+        'GET, POST, PATCH, DELETE, OPTIONS',
+      );
     }
   });
 
@@ -343,9 +347,38 @@ export async function buildApp(deps: Deps) {
       }
     },
   );
+
+  app.delete(
+    '/v1/projects/:id',
+    {
+      schema: {
+        tags: ['projects'],
+        response: {
+          204: { type: 'null', description: 'Project deleted' },
+        },
+      },
+    },
+    async (request, reply) => {
+      const owner = await userId(request, deps.verifyToken);
+      const { id } = request.params as { id: string };
+      if (!uuid.test(id)) return fail(400, 'INVALID_ID', 'Invalid project ID');
+      const existing = await deps.repository.get(owner, id);
+      if (!existing) return fail(404, 'NOT_FOUND', 'Project not found');
+      const deleted = await deps.repository.delete(owner, id);
+      if (!deleted)
+        return fail(
+          403,
+          'FORBIDDEN',
+          'You do not have permission to delete this project',
+        );
+      return reply.code(204).send();
+    },
+  );
   registerScanRoutes(app, {
     projects: deps.repository,
     getUser: (request) => userId(request, deps.verifyToken),
+    allowExternalScans:
+      deps.allowExternalScans ?? process.env.NODE_ENV !== 'production',
     ...(deps.scanRepository ? { scans: deps.scanRepository } : {}),
     ...(deps.scanRuntime ? { runtime: deps.scanRuntime } : {}),
     ...(deps.resolver ? { resolver: deps.resolver } : {}),

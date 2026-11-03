@@ -43,6 +43,11 @@ class MemoryRepository implements ProjectRepository {
     row.project = { ...row.project, ...data };
     return row.project;
   }
+  async delete(userId: string, id: string) {
+    const row = this.rows.get(id);
+    if (!row || row.owner !== userId) return false;
+    return this.rows.delete(id);
+  }
 }
 
 const apps: Array<Awaited<ReturnType<typeof buildApp>>> = [];
@@ -50,7 +55,10 @@ afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
 });
 
-async function fixtureApp(repository = new MemoryRepository()) {
+async function fixtureApp(
+  repository = new MemoryRepository(),
+  allowExternalScans = true,
+) {
   const app = await buildApp({
     repository,
     verifyToken: async (token) => {
@@ -60,6 +68,7 @@ async function fixtureApp(repository = new MemoryRepository()) {
     resolver: async () => ['93.184.215.14'],
     webOrigin: 'http://localhost:3000',
     logger: false,
+    allowExternalScans,
   });
   apps.push(app);
   return { app, repository };
@@ -170,6 +179,23 @@ describe('project API boundary', () => {
     expect(res.json().error.code).toBe('SCANS_UNAVAILABLE');
   });
 
+  it('refuses to queue scans while production egress controls are disabled', async () => {
+    const { app, repository } = await fixtureApp(new MemoryRepository(), false);
+    const project = await repository.create(ownerA, {
+      name: 'A',
+      baseUrl: 'https://example.com/',
+      approvedOrigins: ['https://example.com'],
+      crawlLimits: crawlLimitsSchema.parse({}),
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/v1/projects/${project.id}/scans`,
+      headers: { authorization: `Bearer ${ownerA}` },
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.json().error.code).toBe('SCANS_DISABLED');
+  });
+
   it('exposes /health and /healthz endpoints without requiring authentication', async () => {
     const { app } = await fixtureApp();
     const healthz = await app.inject({ method: 'GET', url: '/healthz' });
@@ -230,5 +256,54 @@ describe('project API boundary', () => {
     expect(blocked.statusCode).toBe(429);
     expect(blocked.json().error.code).toBe('RATE_LIMITED');
     expect(blocked.headers['retry-after']).toBeDefined();
+  });
+
+  it('supports deleting an authorized project and rejects unauthorized deletion', async () => {
+    const { app, repository } = await fixtureApp();
+    const project = await repository.create(ownerA, {
+      name: 'To Delete',
+      baseUrl: 'https://example.com/',
+      approvedOrigins: ['https://example.com'],
+      crawlLimits: crawlLimitsSchema.parse({}),
+    });
+
+    // Unauthenticated DELETE -> 401
+    const unauth = await app.inject({
+      method: 'DELETE',
+      url: `/v1/projects/${project.id}`,
+    });
+    expect(unauth.statusCode).toBe(401);
+
+    // Non-existent ID -> 404
+    const notFound = await app.inject({
+      method: 'DELETE',
+      url: `/v1/projects/${randomUUID()}`,
+      headers: { authorization: `Bearer ${ownerA}` },
+    });
+    expect(notFound.statusCode).toBe(404);
+
+    // Other user DELETE -> 404 (or forbidden)
+    const otherUser = await app.inject({
+      method: 'DELETE',
+      url: `/v1/projects/${project.id}`,
+      headers: { authorization: `Bearer ${ownerB}` },
+    });
+    expect(otherUser.statusCode).toBe(404);
+
+    // Authorized owner DELETE -> 204
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/v1/projects/${project.id}`,
+      headers: { authorization: `Bearer ${ownerA}` },
+    });
+    expect(deleted.statusCode).toBe(204);
+
+    // Subsequent GET -> 404
+    const fetched = await app.inject({
+      method: 'GET',
+      url: `/v1/projects/${project.id}`,
+      headers: { authorization: `Bearer ${ownerA}` },
+    });
+    expect(fetched.statusCode).toBe(404);
   });
 });

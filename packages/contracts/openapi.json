@@ -59,7 +59,7 @@
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 100,
-                        "default": 25
+                        "default": 100
                       },
                       "maxDepth": {
                         "type": "integer",
@@ -146,7 +146,7 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 100,
-                          "default": 25
+                          "default": 100
                         },
                         "maxDepth": {
                           "type": "integer",
@@ -249,7 +249,7 @@
                                 "type": "integer",
                                 "minimum": 1,
                                 "maximum": 100,
-                                "default": 25
+                                "default": 100
                               },
                               "maxDepth": {
                                 "type": "integer",
@@ -377,7 +377,7 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 100,
-                          "default": 25
+                          "default": 100
                         },
                         "maxDepth": {
                           "type": "integer",
@@ -475,7 +475,7 @@
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 100,
-                        "default": 25
+                        "default": 100
                       },
                       "maxDepth": {
                         "type": "integer",
@@ -571,7 +571,7 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 100,
-                          "default": 25
+                          "default": 100
                         },
                         "maxDepth": {
                           "type": "integer",
@@ -629,6 +629,26 @@
                 }
               }
             }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Project deleted"
           }
         }
       }

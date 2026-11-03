@@ -4,6 +4,7 @@
 \i /migrations/0004_history.sql
 \i /migrations/0005_not_seen.sql
 \i /migrations/0006_retention_cleanup.sql
+\i /migrations/0007_project_delete.sql
 
 -- Local Compose credential only. Production credentials belong in Secret Manager.
 alter role webops_app login password 'webops_dev_password';
