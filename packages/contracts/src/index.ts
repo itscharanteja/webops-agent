@@ -34,7 +34,7 @@ export const evidenceKindSchema = z.enum(evidenceKinds);
 export const memberRoleSchema = z.enum(memberRoles);
 
 export const crawlLimitsSchema = z.object({
-  maxPages: z.number().int().min(1).max(100).default(25),
+  maxPages: z.number().int().min(1).max(100).default(100),
   maxDepth: z.number().int().min(0).max(5).default(3),
   concurrency: z.number().int().min(1).max(4).default(2),
   navigationTimeoutMs: z.number().int().min(1000).max(30000).default(10000),
@@ -257,6 +257,10 @@ export const scannerFindingSchema = z.object({
     'UNLABELED_FORM_CONTROL',
     'MISSING_PAGE_TITLE',
     'HORIZONTAL_OVERFLOW',
+    'VISUAL_OVERLAP_CLIPPING',
+    'CONTRAST_DEFECT',
+    'UX_CONVERSION_FRICTION',
+    'BROKEN_VISUAL_STATE',
   ]),
   rule_version: z.literal('1'),
   target: z.string().min(1).max(1000),
