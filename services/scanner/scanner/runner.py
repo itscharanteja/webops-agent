@@ -92,10 +92,10 @@ class Crawler:
         # ask a model to cite positional placeholders before those IDs exist.
         self.emitter.send("finding", key_str, item)
 
-    def skip(self, url: str, reason: str) -> None:
+    def skip(self, url: str, reason: str, level: str = "warn") -> None:
         if len(self.skipped) < 500:
             self.skipped.append({"url": safe_url(url)[:2048], "reason": reason[:200]})
-        self.emitter.event("crawl", "warn", f"Skipped {safe_url(url)}: {reason}", key("skip", url + reason),
+        self.emitter.event("crawl", level, f"Skipped {safe_url(url)}: {reason}", key("skip", url + reason),
                            {"url": safe_url(url)[:2048], "reason": reason[:200]})
 
     async def rate_limit(self, origin: str) -> None:
@@ -111,20 +111,20 @@ class Crawler:
         request = route.request
         raw = request.url
         if request.method not in ("GET", "HEAD"):
-            self.skip(raw, "Non-read request blocked")
+            self.skip(raw, "Non-read request blocked", level="debug")
             await route.abort("blockedbyclient")
             return
         try:
             url = await self.policy.validate(raw)
             await self.rate_limit(origin_of(url))
         except PolicyError as error:
-            self.skip(raw, str(error))
+            self.skip(raw, str(error), level="debug")
             await route.abort("blockedbyclient")
             return
         await route.continue_()
 
     async def block_websocket(self, ws: WebSocketRoute) -> None:
-        self.skip(ws.url, "WebSocket blocked during read-only scan")
+        self.skip(ws.url, "WebSocket blocked during read-only scan", level="debug")
         await ws.close(code=1008, reason="Scan policy")
 
     async def robots_for(self, origin: str, context: BrowserContext) -> RobotFileParser | None:
@@ -199,30 +199,27 @@ class Crawler:
         page.on("requestfailed", failed)
         page.on("response", response_seen)
         try:
-            # 1. Wait for webpage to load full with a 7-second timeout (nav_timeout_ms)
-            # 2. Check and wait until document.readyState state reaches 'complete'
-            async def _load_full_page():
-                resp = await page.goto(
-                    url,
-                    wait_until="domcontentloaded",
-                    timeout=nav_timeout_ms,
-                )
-                # Wait until the document and subresources finish loading
+            # 1. Wait for webpage to load with a 7-second timeout (nav_timeout_ms)
+            response = await page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=nav_timeout_ms,
+            )
+            # 2. Best-effort wait for subresources and complete readyState
+            try:
                 await page.wait_for_function(
                     "() => document.readyState === 'complete'",
-                    timeout=nav_timeout_ms,
+                    timeout=min(3000, nav_timeout_ms),
                 )
-                # Verify document.readyState state is complete
-                state = await page.evaluate("() => document.readyState")
-                if state != "complete":
-                    raise RuntimeError(
-                        f"Webpage not fully loaded: document.readyState is '{state}', expected 'complete'"
-                    )
-                return resp
-
-            timeout_secs = nav_timeout_ms / 1000.0
-            response = await asyncio.wait_for(_load_full_page(), timeout=timeout_secs)
-            result.status = response.status if response else None
+            except Exception:
+                pass
+            # 3. Verify document.readyState is ready ('interactive' or 'complete')
+            state = await page.evaluate("() => document.readyState")
+            if state == "loading":
+                raise RuntimeError(
+                    f"Webpage not loaded: document.readyState is '{state}'"
+                )
+            result.status = response.status if response else 200
             try:
                 final = normalize_url(page.url)
                 if origin_of(final) in self.policy.origins:
@@ -231,7 +228,7 @@ class Crawler:
                 pass
             result.title = safe_text(await page.title(), 500)
 
-            # Webpage is confirmed fully loaded (document.readyState === 'complete').
+            # Webpage DOM is confirmed ready ('interactive' or 'complete').
             # Then only the agent crawls (extracts links, interacts, checks, visual audit).
             result.links = await page.locator("a[href]").evaluate_all(
                 "els => els.filter(e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden').map((e,i) => ({url:e.href,text:(e.textContent||'').trim().slice(0,200),locator:'a[href] index '+i})).slice(0,1000)"
@@ -267,6 +264,7 @@ class Crawler:
                     if shot:
                         result.screenshots.append((viewport, shot))
         except Exception as error:
+            timeout_secs = nav_timeout_ms / 1000.0
             err_msg = str(error).strip()
             if not err_msg:
                 if isinstance(error, (asyncio.TimeoutError, TimeoutError)):

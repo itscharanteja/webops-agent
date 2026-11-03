@@ -62,7 +62,7 @@ class TestPageLoadStateAndTimeout(unittest.TestCase):
             # Verified wait_for_function waited for document.readyState === 'complete'
             mock_page.wait_for_function.assert_called_once_with(
                 "() => document.readyState === 'complete'",
-                timeout=7000,
+                timeout=3000,
             )
             # Verified evaluate checked document.readyState
             mock_page.evaluate.assert_any_call("() => document.readyState")
@@ -73,7 +73,7 @@ class TestPageLoadStateAndTimeout(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    def test_inspect_does_not_crawl_if_ready_state_not_complete(self):
+    def test_inspect_crawls_when_ready_state_is_interactive(self):
         async def run_test():
             mock_page = AsyncMock()
             mock_page.set_default_timeout = MagicMock()
@@ -81,8 +81,39 @@ class TestPageLoadStateAndTimeout(unittest.TestCase):
             mock_page.on = MagicMock()
             mock_page.goto = AsyncMock(return_value=MagicMock(status=200))
             mock_page.wait_for_function = AsyncMock()
-            # Returns 'interactive' instead of 'complete'
+            # Returns 'interactive' (e.g. subresources blocked by origin policy)
             mock_page.evaluate = AsyncMock(return_value="interactive")
+            mock_page.title = AsyncMock(return_value="Example Page")
+            mock_page.url = "https://example.com/test"
+
+            mock_locator = MagicMock()
+            mock_locator.evaluate_all = AsyncMock(return_value=[{"url": "https://example.com/sub", "text": "Sub"}])
+            mock_page.locator = MagicMock(return_value=mock_locator)
+
+            mock_context = AsyncMock()
+            mock_context.new_page = AsyncMock(return_value=mock_page)
+
+            with patch("scanner.runner.explore_page_interactions", new=AsyncMock(return_value={"revealed_links": []})), \
+                 patch("scanner.runner.run_dom_checks", new=AsyncMock(return_value=([], None))):
+                res = await self.crawler.inspect(mock_context, "https://example.com/test", 0)
+
+            # Must crawl successfully (links extracted)
+            self.assertEqual(len(res.links), 1)
+            self.assertEqual(res.status, 200)
+            self.assertIsNone(res.limitation)
+
+        asyncio.run(run_test())
+
+    def test_inspect_does_not_crawl_if_ready_state_is_loading(self):
+        async def run_test():
+            mock_page = AsyncMock()
+            mock_page.set_default_timeout = MagicMock()
+            mock_page.set_default_navigation_timeout = MagicMock()
+            mock_page.on = MagicMock()
+            mock_page.goto = AsyncMock(return_value=MagicMock(status=200))
+            mock_page.wait_for_function = AsyncMock()
+            # Returns 'loading'
+            mock_page.evaluate = AsyncMock(return_value="loading")
             mock_page.url = "https://example.com/test"
 
             mock_context = AsyncMock()
@@ -93,7 +124,7 @@ class TestPageLoadStateAndTimeout(unittest.TestCase):
             # Must NOT crawl (no links extracted)
             self.assertEqual(res.links, [])
             self.assertIsNotNone(res.limitation)
-            self.assertIn("document.readyState is 'interactive', expected 'complete'", res.limitation)
+            self.assertIn("document.readyState is 'loading'", res.limitation)
 
         asyncio.run(run_test())
 
