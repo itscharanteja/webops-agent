@@ -44,10 +44,10 @@ flowchart TD
     Triage -->|Server & Infrastructure| Backend["⚙️ Backend & Infra Track\n- HTTP 5xx Server Failures\n- First-Party API Network Timeouts\n- Security & Header Flags\n- Microservice Latency (TTFB)"]
     Triage -->|Content & Metadata| Content["📝 Content & SEO Track\n- Missing Page Titles\n- Missing Image Alt Text\n- Orphaned Page Hierarchies\n- Broken Copy Placeholders"]
 
-    Design --> OutDesign["🎨 UI/UX Design Spec (.md / Figma)\n- Side-by-side Visual Crops\n- WCAG Contrast Hex Fixes\n- Responsive Breakpoint Specs"]
-    Frontend --> OutFE["💻 Frontend Engineering Tickets (.md / Jira)\n- Exact CSS Locators & DOM Trees\n- Console Call Stacks\n- Suggested Component / JSX Fixes"]
-    Backend --> OutBE["⚙️ Backend Incident Runbook (.md / Linear)\n- cURL Reproduction Commands\n- Request / Response JSON Traces\n- Endpoint Latency & Headers"]
-    Content --> OutContent["📝 Content & SEO Checklist (.md / Notion)\n- Contextual Title Recommendations\n- Semantic Image Descriptions\n- SERP Search Snippet Previews"]
+    Design --> OutDesign["🎨 Discord #ui-ux-design\n- Rich Visual Embed with Color Swatches\n- S3 Screenshot Crop Embedded\n- WCAG Contrast Hex Fixes"]
+    Frontend --> OutFE["💻 Discord #frontend-bugs\n- Code Snippet Embed\n- Exact CSS Locators & DOM Trees\n- Console Error Stacks"]
+    Backend --> OutBE["⚙️ Discord #backend-alerts\n- Urgent P0/P1 High-Visibility Card\n- Copy-Paste cURL Commands\n- HTTP 5xx Response Traces"]
+    Content --> OutContent["📝 Discord #content-seo\n- Meta Title & Alt Text Checklist\n- Search Engine Preview Card\n- Target URL Context"]
 ```
 
 ---
@@ -315,21 +315,21 @@ export class PersonaTriageService {
 
 ---
 
-## 6. User Interface & Export Integration
+## 6. User Interface & Project Configuration
 
 ### 6.1 Multi-Persona Action Bar on Scan View (`apps/web`)
 
-On the completed scan overview page, below the Executive Brief, surface a dedicated **"Role-Targeted Deliverables"** section:
+On the completed scan overview page, below the Executive Brief, surface a dedicated **"Role-Targeted Deliverables & Discord Dispatch"** section:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ 📦 Role-Targeted Deliverables & Action Packs                                                           │
-│ Export tailored, proof-backed documentation packages directly to the responsible team:                 │
+│ 📦 Role-Targeted Deliverables & Discord Channel Dispatch                                               │
+│ Export tailored documentation packages or push directly to designated Discord channels:                │
 ├────────────────────────────┬────────────────────────────┬────────────────────────────┬─────────────────┤
 │ 🎨 UI/UX Design Spec       │ 💻 Frontend Task Backlog   │ ⚙️ Backend SRE Runbook     │ 📝 Content & SEO │
 │ 4 Visual / Contrast Issues │ 8 DOM & Script Issues      │ 2 HTTP 500 API Failures    │ 3 Alt Text Bugs │
-│ [⬇️ Download Spec (.md)]   │ [⬇️ Export Jira Tasks]     │ [⬇️ Download Runbook (.md)]│ [⬇️ Download]   │
-│ [📤 Send to #design-slack] │ [📤 Create GitHub Issues]  │ [🚨 Page On-Call via Hook] │                 │
+│ [⬇️ Download Spec (.md)]   │ [⬇️ Download Tasks (.md)]  │ [⬇️ Download Runbook (.md)]│ [⬇️ Download]   │
+│ [🚀 Push to #ui-ux-design] │ [🚀 Push to #frontend-bugs]│ [🚨 Push to #backend-alerts│ [🚀 Push to SEO]│
 └────────────────────────────┴────────────────────────────┴────────────────────────────┴─────────────────┘
 ```
 
@@ -347,29 +347,226 @@ Engineers and designers can bookmark their direct view without sifting through u
 
 ---
 
-## 7. Automated Webhook & Ticket Dispatch (Roadmap Phase)
+## 7. Discord Webhook Integration & Multi-Channel Dispatch Engine
 
-Beyond downloading `.md` packages, WebOps can automatically dispatch findings to third-party tools:
+### 7.1 Why Discord Webhooks Are the Ideal Integration
+
+Discord Webhooks are far simpler and more reliable than traditional enterprise ticketing bots:
+
+1. **Zero OAuth2 Bot Setup:** No developer portal approvals, gateway bots, or permission scopes. Users simply create an incoming webhook in their server for each channel in two clicks (`Edit Channel` → `Integrations` → `Webhooks` → `Copy Webhook URL`).
+2. **Rich Visual Embeds:** Discord natively renders colored embed borders, markdown code blocks, structured field grids, and high-resolution thumbnail/screenshot proof previews directly in chat.
+3. **Instant Mobile & Desktop Push:** Developers and designers get push notifications with one-tap clickable proof links directly to the WebOps proof viewer.
+
+### 7.2 Multi-Channel Architecture
+
+A project configures specific Discord incoming webhook URLs for each functional area:
 
 ```text
-Scan Completed → Persona Triage
-├── UI/UX Findings ────────────► Slack #design-critique (with screenshot crop preview)
-├── Frontend Findings ────────► GitHub Repository Issues (tagged with label 'area:frontend')
-├── Backend / P0 Findings ────► PagerDuty / Opsgenie Incident + Jira Service Desk
-└── Content Findings ─────────► Notion Database / Asana Board
+Scan Completed → Autonomous Persona Triage
+├── UI/UX Findings (4) ────────► POST https://discord.com/api/webhooks/... (Channel: #ui-ux-design)
+├── Frontend Findings (8) ─────► POST https://discord.com/api/webhooks/... (Channel: #frontend-bugs)
+├── Backend / P0 Findings (2) ──► POST https://discord.com/api/webhooks/... (Channel: #backend-alerts)
+└── Content / SEO Findings (3) ─► POST https://discord.com/api/webhooks/... (Channel: #content-seo)
+```
+
+### 7.3 Discord Embed Payload Specification
+
+Each finding is serialized into a Discord Rich Embed:
+
+```typescript
+export interface DiscordEmbedField {
+  name: string;
+  value: string;
+  inline?: boolean;
+}
+
+export interface DiscordEmbed {
+  title: string;
+  url?: string;
+  description?: string;
+  color: number; // Decimal color code (e.g. 0xE02424 for P0 Red)
+  fields: DiscordEmbedField[];
+  image?: { url: string };
+  thumbnail?: { url: string };
+  footer?: { text: string };
+  timestamp?: string;
+}
+
+export interface DiscordWebhookPayload {
+  username: string; // e.g. "WebOps Auditor [Design Squad]"
+  avatar_url?: string;
+  content?: string; // Optional @mention for P0 (e.g. "@here High Severity Defect")
+  embeds: DiscordEmbed[];
+}
+```
+
+#### Color Mapping by Priority & Track:
+
+- **Backend P0 / Outage:** `0xDC2626` (Crimson Red)
+- **Frontend / Runtime P1:** `0x2563EB` (Cobalt Blue)
+- **UI/UX Design P2:** `0x7C3AED` (Violet Purple)
+- **Content / SEO P3:** `0x059669` (Emerald Green)
+
+### 7.4 Sample Discord Embed Payloads
+
+#### A. Dispatched to `#ui-ux-design`:
+
+```json
+{
+  "username": "WebOps Design Auditor",
+  "avatar_url": "https://webops.dev/brand/bot-design.png",
+  "embeds": [
+    {
+      "title": "🎨 [P2] Insufficient Contrast on CTA Button",
+      "url": "https://webops.dev/projects/proj-123/scans/scan-456/evidence/ev-789",
+      "description": "**Affects:** `#hero-signup-button` on `https://example.com/pricing`\n**Observed:** Contrast ratio is `2.84:1` (Text: `#FFFFFF` on `#6BA4E8`). Fails WCAG 2.1 AA (4.5:1).",
+      "color": 8141549,
+      "fields": [
+        {
+          "name": "📐 Design Token Remediation",
+          "value": "Shift background fill to `#2B6CB0` (achieves `5.12:1` contrast) or add a `1px solid #1A365D` dark-mode focus ring.",
+          "inline": false
+        },
+        {
+          "name": "🔍 Stored Visual Proof",
+          "value": "[Open Interactive Proof Viewer](https://webops.dev/projects/proj-123/scans/scan-456/evidence/ev-789)",
+          "inline": true
+        }
+      ],
+      "image": {
+        "url": "https://s3.amazonaws.com/webops-proofs/crops/hero-contrast-crop.jpg"
+      },
+      "footer": {
+        "text": "WebOps Audit Engine • Scan #scan-456"
+      },
+      "timestamp": "2026-11-03T12:00:00Z"
+    }
+  ]
+}
+```
+
+#### B. Dispatched to `#backend-alerts`:
+
+````json
+{
+  "username": "WebOps SRE Guardian",
+  "avatar_url": "https://webops.dev/brand/bot-backend.png",
+  "content": "🚨 **P1 Server Error Detected on Live Endpoint**",
+  "embeds": [
+    {
+      "title": "⚙️ [P1] First-Party Request Failed: HTTP 500",
+      "url": "https://webops.dev/projects/proj-123/scans/scan-456/evidence/ev-999",
+      "description": "`POST https://api.example.com/v1/cart/checkout` returned `500 Internal Server Error` in 842ms.",
+      "color": 14428710,
+      "fields": [
+        {
+          "name": "🧪 Reproduction Command",
+          "value": "```bash\ncurl -X POST \"https://api.example.com/v1/cart/checkout\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"cartId\":\"c4b2a8d1\",\"currency\":null}'\n```",
+          "inline": false
+        },
+        {
+          "name": "🛠️ Suggested Patch",
+          "value": "Add Zod schema validation in `CheckoutController.ts`. Fallback to default USD when `currency` is null.",
+          "inline": false
+        },
+        {
+          "name": "🔍 Network Evidence Trace",
+          "value": "[Inspect Full HTTP Headers & Payload](https://webops.dev/projects/proj-123/scans/scan-456/evidence/ev-999)",
+          "inline": true
+        }
+      ],
+      "footer": {
+        "text": "WebOps Audit Engine • SRE Critical Track"
+      },
+      "timestamp": "2026-11-03T12:00:00Z"
+    }
+  ]
+}
+````
+
+### 7.5 Implementation: Dispatcher Service (`apps/worker/src/discord-dispatcher.ts`)
+
+```typescript
+export interface ProjectDiscordConfig {
+  uiUxWebhookUrl?: string;
+  frontendWebhookUrl?: string;
+  backendWebhookUrl?: string;
+  contentSeoWebhookUrl?: string;
+  defaultWebhookUrl?: string;
+}
+
+export class DiscordDispatcherService {
+  async dispatchFinding(
+    webhookUrl: string,
+    finding: FindingRecord,
+    proofUrl: string,
+    screenshotCropUrl?: string,
+  ): Promise<void> {
+    const colorMap: Record<TargetPersona, number> = {
+      ui_ux: 0x7c3aed, // Purple
+      frontend: 0x2563eb, // Blue
+      backend: 0xdc2626, // Red
+      content_seo: 0x059669, // Green
+    };
+
+    const embed: DiscordEmbed = {
+      title: `[${finding.priority}] ${finding.title}`,
+      url: proofUrl,
+      description: `**Affected URL:** \`${finding.pageUrl}\`\n**Observed:** ${finding.observedFacts}`,
+      color: colorMap[finding.targetPersona] ?? 0x4b5563,
+      fields: [
+        {
+          name: '🛠️ Recommended Fix',
+          value: finding.suggestedFix.slice(0, 1024),
+          inline: false,
+        },
+        {
+          name: '🔍 Stored Proof Citation',
+          value: `[Open Proof Viewer](${proofUrl})`,
+          inline: true,
+        },
+      ],
+      ...(screenshotCropUrl ? { image: { url: screenshotCropUrl } } : {}),
+      footer: { text: `WebOps Agent • Rule ${finding.ruleId}` },
+      timestamp: new Date().toISOString(),
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: `WebOps [${finding.targetPersona.toUpperCase()}]`,
+        embeds: [embed],
+      }),
+    });
+
+    if (response.status === 429) {
+      // Handle Discord rate limit
+      const retryAfter = Number(response.headers.get('retry-after') || 1);
+      await new Promise((r) => setTimeout(r, retryAfter * 1000));
+      await this.dispatchFinding(
+        webhookUrl,
+        finding,
+        proofUrl,
+        screenshotCropUrl,
+      );
+    }
+  }
+}
 ```
 
 ---
 
 ## 8. Implementation Milestones
 
-| Milestone                                  | Deliverables                                                                                 | Verification Criteria                                                                          |
-| :----------------------------------------- | :------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
-| **M1: Data Contracts & Migration**         | Add `target_persona` enum to Zod contracts and Postgres migration `0008_persona_triage.sql`. | Migration passes on local Compose; schema types generated cleanly.                             |
-| **M2: Triage Classification Engine**       | Implement `classify()` in worker triage service with unit tests for each rule ID.            | 100% of seeded fixture defects map to the expected persona.                                    |
-| **M3: Role-Tailored Bedrock Explanations** | Add role-specific prompt templates to Amazon Bedrock service.                                | Designer prompt generates WCAG hex adjustments; backend prompt generates cURL reproductions.   |
-| **M4: Web UI Deliverable Downloads**       | Add persona package download buttons (`/v1/scans/:id/deliverables/:persona`) to scan view.   | Clicking download returns deterministic, UTF-8 formatted Markdown with working evidence links. |
-| **M5: Issues Board Persona Filter**        | Add persona tabs and URL query parameters to the project issues board.                       | Filtering by `ui_ux` displays only visual findings; persists across page reload.               |
+| Milestone                                  | Deliverables                                                                                | Verification Criteria                                                                           |
+| :----------------------------------------- | :------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------------------- |
+| **M1: Data Contracts & Migration**         | Add `target_persona` enum and Discord webhook URLs map to `projects` schema in Postgres.    | Migration passes on local Compose; schema types generated cleanly.                              |
+| **M2: Triage Classification Engine**       | Implement `classify()` in worker triage service with unit tests for each rule ID.           | 100% of seeded fixture defects map to the expected persona.                                     |
+| **M3: Role-Tailored Bedrock Explanations** | Add role-specific prompt templates to Amazon Bedrock service.                               | Designer prompt generates WCAG hex adjustments; backend prompt generates cURL reproductions.    |
+| **M4: Discord Webhook Dispatcher**         | Implement `DiscordDispatcherService` with rich embeds, priority colors, and S3 image links. | Test scan pushes rich embeds directly to active Discord channels (#ui-ux, #backend, #frontend). |
+| **M5: Web UI Project Webhook Settings**    | Add Discord Webhook input fields in Project Settings page with "Test Ping" button.          | Users can save distinct channel webhooks per project and test them live.                        |
+| **M6: Issues Board Persona Filter**        | Add persona tabs and URL query parameters to the project issues board.                      | Filtering by `ui_ux` displays only visual findings; persists across page reload.                |
 
 ---
 
