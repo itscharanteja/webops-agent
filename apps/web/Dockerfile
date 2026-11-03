@@ -4,6 +4,7 @@ RUN corepack enable && corepack prepare pnpm@10.34.9 --activate
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/web ./apps/web
 COPY packages/contracts ./packages/contracts
+COPY README.md ./
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @webops/contracts build
 ARG NEXT_PUBLIC_COGNITO_USER_POOL_ID

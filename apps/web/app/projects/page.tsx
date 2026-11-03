@@ -52,11 +52,21 @@ export default function ProjectsPage() {
   return (
     <Container size="md" py="xl">
       <Stack gap="lg">
-        <Group justify="space-between">
-          <Title order={1}>Projects</Title>
-          <Button component={Link} href="/projects/new">
-            New project
-          </Button>
+        <Group justify="space-between" align="center" wrap="wrap">
+          <div>
+            <Title order={1}>Projects</Title>
+            <Text c="dimmed" size="xs">
+              Autonomous website auditor and security policy management
+            </Text>
+          </div>
+          <Group gap="xs">
+            <Button component={Link} href="/about" variant="default">
+              📖 About & Docs
+            </Button>
+            <Button component={Link} href="/projects/new">
+              New project
+            </Button>
+          </Group>
         </Group>
         {loading && <Loader aria-label="Loading projects" />}
         {error && (
