@@ -79,3 +79,52 @@ This will cleanly empty and remove the S3 proof bucket, terminate the CloudForma
 | `AWS_BEDROCK_REGION`    | AWS Region for Bedrock AI model invocations (default: `ap-south-1`)                            |
 | `BEDROCK_MODEL_ID`      | Bedrock inference profile (default: `apac.amazon.nova-lite-v1:0`)                              |
 | `ENABLE_EXTERNAL_SCANS` | Production scan gate; keep `false` until the Phase 5 egress and smoke-test gate passes         |
+
+## Frontend design audit
+
+Scan report and activity routes share a compact workspace with Overview, Issues,
+Pages, Skipped URLs, Events, Checks, and Limitations. Issues, pages, skips, and limitations replace rows when paging. Events use a
+bounded, scrolling developer terminal with sequence ordering, search, level
+filtering, copy, and follow-latest controls. The report drawer and exports read the saved issue snapshot.
+Scores, grades, speculative risk summaries, decorative emojis, and cryptographic
+verification claims have been removed from the frontend. Classification appears
+only in optional scan details when a classifier event actually recorded it.
+
+Use **Export** to choose a discipline and Markdown or Print / Save as PDF. PDF
+output uses the browser print dialog. Discord configuration, test messages, and
+explicit scan dispatch are available under project **Integrations**. Historical
+stored deliverable content is not rewritten by this presentation change.
+
+Validate the frontend with `pnpm --filter @webops/web typecheck` and
+`pnpm --filter @webops/web test`. This change affects presentation only; it does
+not change scan policy, deterministic checks, evidence authorization, or stored
+scan facts.
+
+The scan overview also provides discipline-specific Download menus
+(`frontend.md`, `backend.md`, `design-ux.md`, `content-seo.md`), a Push to Discord
+menu, and an inline webhook settings modal. The AI audited summary presents
+saved cited explanations; when none exist it explicitly falls back to recorded
+scan facts. Raw summary JSON is truncated with an expand/collapse control.
+The check table and scan details remain available directly in the overview.
+
+### Running scans and AI drafts
+
+Queued/running scans display only the developer terminal, with a spinner by the
+Scan activity heading and disabled result tabs. Once the scan ends the tabs
+unlock, including collected results for partial, failed, or cancelled runs;
+those runs always retain the incomplete-coverage label.
+
+The overview's **Draft AI summary** button calls the authenticated
+`POST /v1/scans/:id/summary-draft` endpoint. The API uses `BEDROCK_MODEL_ID` and
+`AWS_BEDROCK_REGION` (falling back to `AWS_REGION`) with its server IAM credentials.
+Bedrock prioritizes up to three existing findings from bounded, redacted facts;
+the API composes the draft from saved observations/fixes and existing evidence IDs.
+Model output cannot add new claims or citations. Errors, missing configuration,
+and the 12-second timeout return a clearly labeled deterministic fallback.
+
+Drafts are separate from immutable reports. The API coalesces repeated requests
+and caches up to 100 drafts in memory for 15 minutes (fallbacks for 30 seconds).
+No report, observation, or issue is rewritten. See the official
+[Bedrock Converse examples](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/javascript_bedrock-runtime_code_examples.html)
+for the SDK invocation pattern. CloudFormation passes model configuration to the
+API task; deployment remains a separate operation.

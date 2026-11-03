@@ -9,3 +9,143 @@ body {
 a {
   color: #175cd3;
 }
+
+.print-report {
+  display: none;
+}
+@media print {
+  .screen-only,
+  [role='tabpanel'],
+  [role='dialog'],
+  button {
+    display: none !important;
+  }
+  .print-report {
+    display: block;
+  }
+  .print-report article {
+    break-inside: avoid;
+    margin: 24px 0;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+}
+
+.audit-summary {
+  border: 1px solid #e4e9e6;
+  border-radius: 10px;
+  padding: 20px;
+  background: #fafcfb;
+  min-width: 0;
+}
+.audit-summary:first-child {
+  border-top: 3px solid #8cafa0;
+}
+.audit-summary-entry {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e9e6;
+}
+.audit-raw-summary {
+  background: #edf1ef;
+  border-radius: 6px;
+  padding: 12px;
+  font:
+    12px/1.7 ui-monospace,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 86px;
+  overflow: hidden;
+  margin: 12px 0 0;
+  mask-image: linear-gradient(#000 60%, transparent);
+}
+.audit-raw-summary.expanded {
+  max-height: 280px;
+  overflow: auto;
+  mask-image: none;
+}
+.audit-focus {
+  border: 1px solid #e4e9e6;
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  min-width: 0;
+}
+.audit-focus:hover {
+  background: #f3f7f5;
+  border-color: #9db6a9;
+}
+.audit-focus:focus-visible {
+  outline: 2px solid #397c60;
+  outline-offset: 3px;
+}
+
+/* Developer console: a bounded scrolling stream instead of paginated cards. */
+.scan-event-log {
+  background: #020617;
+  color: #cbd5e1;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  height: min(60vh, 560px);
+  min-height: 260px;
+  overflow: auto;
+  font:
+    12px/1.75 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  box-shadow: inset 0 2px 10px #0003;
+}
+.scan-event-log > .terminal-line {
+  display: grid;
+  grid-template-columns: 36px 80px 57px 105px minmax(0, 1fr);
+  gap: 10px;
+  padding: 3px 0;
+  border: 0;
+}
+.scan-event-log > .terminal-line:hover {
+  background: #0f172a;
+}
+.scan-event-log .terminal-seq,
+.scan-event-log time {
+  color: #94a3b8;
+}
+.scan-event-log .terminal-phase {
+  color: #7dd3fc;
+}
+.scan-event-log .terminal-message {
+  color: #e2e8f0;
+  white-space: pre-wrap;
+}
+.scan-event-log .event-info {
+  color: #6ee7b7;
+}
+.scan-event-log .event-debug {
+  color: #94a3b8;
+}
+.scan-event-log .event-warn {
+  color: #fcd34d;
+}
+.scan-event-log .event-error {
+  color: #fca5a5;
+}
+@media (max-width: 760px) {
+  .scan-event-log > .terminal-line {
+    grid-template-columns: 32px 75px 55px minmax(0, 1fr);
+    gap: 6px;
+  }
+  .scan-event-log .terminal-message {
+    grid-column: 2/-1;
+  }
+}
+.scan-sections button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
