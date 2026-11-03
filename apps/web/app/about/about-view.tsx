@@ -24,6 +24,31 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
+import MermaidDiagram from '../../components/mermaid-diagram';
+
+const DEFAULT_MERMAID_CHART = `flowchart TD
+    Browser[Browser] --> Cognito[Amazon Cognito · sign-in]
+    Browser --> CF[CloudFront · HTTPS]
+    CF --> ALB[Application Load Balancer]
+
+    subgraph Compute[Amazon ECS Fargate]
+        Web[Next.js · Mantine UI]
+        API[Fastify · REST and SSE]
+        Worker[BullMQ worker]
+        Scanner[Python · Playwright / FastMCP]
+        Worker -->|supervised subprocess · JSON lines| Scanner
+    end
+
+    ALB --> Web
+    ALB --> API
+    Web -->|authenticated requests| API
+    API -->|enqueue scan ID| Redis[ElastiCache Redis · queue and events]
+    Redis --> Worker
+    API --> DB[(RDS PostgreSQL · source of truth)]
+    Worker --> DB
+    Worker --> S3[Private S3 · evidence artifacts]
+    API -->|authorized proof access| S3
+    API --> Bedrock[Amazon Bedrock · summary drafts]`;
 
 interface AboutViewProps {
   content: string;
@@ -52,6 +77,11 @@ export default function AboutView({ content }: AboutViewProps) {
   }
 
   const rawLines = useMemo(() => content.split('\n'), [content]);
+
+  const mermaidChart = useMemo(() => {
+    const match = content.match(/```mermaid\n([\s\S]*?)```/);
+    return match && match[1] ? match[1].trim() : DEFAULT_MERMAID_CHART;
+  }, [content]);
 
   return (
     <Container size="lg" py="xl">
@@ -279,85 +309,17 @@ corepack pnpm dev`}</pre>
 
               <Divider />
 
-              {/* Architecture & Flowchart */}
+              {/* Architecture & Mermaid Flowchart */}
               <Stack gap="md">
                 <Title order={2} className="text-xl font-bold text-slate-800">
-                  System Architecture
+                  Architecture
                 </Title>
                 <Text size="sm" c="dimmed">
                   100% AWS cloud-native architecture deployed across ECS
                   Fargate, CloudFront, ALB, RDS Postgres, and ElastiCache Redis.
                 </Text>
 
-                {/* Visual Architecture Representation */}
-                <Card
-                  withBorder
-                  padding="lg"
-                  radius="md"
-                  bg="slate.9"
-                  className="bg-slate-900 text-slate-100"
-                >
-                  <Stack gap="md">
-                    <Group justify="space-between" align="center">
-                      <Badge color="blue" variant="filled">
-                        Architecture Topology
-                      </Badge>
-                      <Text size="xs" c="dimmed">
-                        TypeScript Monorepo + Python Scanner Superprocess
-                      </Text>
-                    </Group>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
-                      <div className="border border-slate-700 p-3 rounded bg-slate-800/60">
-                        <Text fw={700} c="cyan.4">
-                          1. Ingress & Auth
-                        </Text>
-                        <Text c="dimmed" size="xs" mt={2}>
-                          • Amazon Cognito (SRP/OIDC)
-                          <br />
-                          • AWS CloudFront (HTTPS CDN)
-                          <br />• Application Load Balancer
-                        </Text>
-                      </div>
-
-                      <div className="border border-slate-700 p-3 rounded bg-slate-800/60">
-                        <Text fw={700} c="green.4">
-                          2. Compute (ECS Fargate)
-                        </Text>
-                        <Text c="dimmed" size="xs" mt={2}>
-                          • Next.js App Router (Web)
-                          <br />
-                          • Fastify REST & SSE (API)
-                          <br />
-                          • BullMQ Consumer (Worker)
-                          <br />• Playwright / FastMCP (Scanner)
-                        </Text>
-                      </div>
-
-                      <div className="border border-slate-700 p-3 rounded bg-slate-800/60">
-                        <Text fw={700} c="violet.4">
-                          3. State & Intelligence
-                        </Text>
-                        <Text c="dimmed" size="xs" mt={2}>
-                          • RDS Postgres (Source of truth)
-                          <br />
-                          • ElastiCache Redis (BullMQ/SSE)
-                          <br />
-                          • Private S3 (Evidence artifacts)
-                          <br />• Amazon Bedrock (Visual AI)
-                        </Text>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-950 p-3 rounded text-[11px] text-slate-400 font-mono overflow-x-auto">
-                      <pre>{`Browser --> CloudFront --> ALB --> Web (Next.js) & API (Fastify)
-API --> Redis (enqueue scan ID) --> Worker (BullMQ)
-Worker --> Supervised Subprocess (Python Playwright)
-Findings & Proof --> RDS PostgreSQL & Private S3 Bucket
-AI Summaries & Visual Checks --> Amazon Bedrock (Nova / Claude)`}</pre>
-                    </div>
-                  </Stack>
-                </Card>
+                <MermaidDiagram chart={mermaidChart} />
               </Stack>
 
               <Divider />
