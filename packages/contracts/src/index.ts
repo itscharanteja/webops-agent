@@ -25,6 +25,12 @@ export const evidenceKinds = [
   'url',
 ] as const;
 export const memberRoles = ['owner', 'editor', 'viewer'] as const;
+export const targetPersonas = [
+  'ui_ux',
+  'frontend',
+  'backend',
+  'content_seo',
+] as const;
 
 export const scanStatusSchema = z.enum(scanStatuses);
 export const issueStatusSchema = z.enum(issueStatuses);
@@ -32,12 +38,44 @@ export const prioritySchema = z.enum(priorities);
 export const eventLevelSchema = z.enum(eventLevels);
 export const evidenceKindSchema = z.enum(evidenceKinds);
 export const memberRoleSchema = z.enum(memberRoles);
+export const targetPersonaSchema = z.enum(targetPersonas);
+export type TargetPersona = z.infer<typeof targetPersonaSchema>;
+
+export const personaRemediationAdviceSchema = z.object({
+  persona: z.enum(targetPersonas),
+  headline: z.string().min(1).max(200),
+  impactAssessment: z.string().min(1).max(2000),
+  concreteFix: z.string().min(1).max(4000),
+  codeOrTokenSnippet: z.string().optional(),
+  evidenceCitations: z.array(z.string().uuid()),
+});
+export type PersonaRemediationAdvice = z.infer<
+  typeof personaRemediationAdviceSchema
+>;
+
+export const personaPackageSummarySchema = z.object({
+  persona: z.enum(targetPersonas),
+  title: z.string(),
+  issueCount: z.number().int().min(0),
+  criticalCount: z.number().int().min(0),
+  downloadMarkdownUrl: z.string().optional(),
+});
+export type PersonaPackageSummary = z.infer<typeof personaPackageSummarySchema>;
+
+export const projectDiscordConfigSchema = z.object({
+  uiUxWebhookUrl: z.string().url().max(2048).optional(),
+  frontendWebhookUrl: z.string().url().max(2048).optional(),
+  backendWebhookUrl: z.string().url().max(2048).optional(),
+  contentSeoWebhookUrl: z.string().url().max(2048).optional(),
+  defaultWebhookUrl: z.string().url().max(2048).optional(),
+});
+export type ProjectDiscordConfig = z.infer<typeof projectDiscordConfigSchema>;
 
 export const crawlLimitsSchema = z.object({
   maxPages: z.number().int().min(1).max(100).default(100),
   maxDepth: z.number().int().min(0).max(5).default(3),
   concurrency: z.number().int().min(1).max(4).default(2),
-  navigationTimeoutMs: z.number().int().min(1000).max(30000).default(10000),
+  navigationTimeoutMs: z.number().int().min(1000).max(30000).default(7000),
   pageTimeoutMs: z.number().int().min(5000).max(120000).default(60000),
   scanTimeoutMs: z.number().int().min(30000).max(1800000).default(900000),
   requestsPerSecond: z.number().min(0.1).max(5).default(2),
@@ -49,6 +87,7 @@ export const projectInputSchema = z.object({
   approvedOrigins: z.array(z.string().url().max(2048)).min(1).max(10),
   authorizationConfirmed: z.literal(true),
   crawlLimits: crawlLimitsSchema.partial().optional(),
+  discordWebhooks: projectDiscordConfigSchema.optional(),
 });
 
 export const projectPatchSchema = projectInputSchema
@@ -56,6 +95,7 @@ export const projectPatchSchema = projectInputSchema
   .omit({ authorizationConfirmed: true })
   .extend({
     authorizationConfirmed: z.literal(true).optional(),
+    discordWebhooks: projectDiscordConfigSchema.optional(),
   });
 
 export const projectSchema = z.object({
@@ -64,6 +104,7 @@ export const projectSchema = z.object({
   baseUrl: z.string().url(),
   approvedOrigins: z.array(z.string().url()),
   crawlLimits: crawlLimitsSchema,
+  discordWebhooks: projectDiscordConfigSchema.optional(),
   createdAt: z.string().datetime(),
 });
 
@@ -165,9 +206,11 @@ export const reportIssueSnapshotItemSchema = z.object({
   ruleId: z.string(),
   ruleVersion: z.string(),
   detectedSeverity: z.enum(priorities),
+  targetPersona: z.enum(targetPersonas).default('frontend'),
   confidence: z.number(),
   facts: z.record(z.unknown()),
   explanation: z.record(z.unknown()),
+  remediationAdvice: personaRemediationAdviceSchema.optional(),
   evidenceIds: z.array(z.string().uuid()),
   citations: z.array(
     z.object({
@@ -187,6 +230,7 @@ export const scanReportSchema = z.object({
   summary: z.record(z.unknown()),
   coverage: scanCoverageSchema,
   issueSnapshot: z.array(reportIssueSnapshotItemSchema),
+  personaDeliverables: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string().datetime(),
 });
 
@@ -326,6 +370,7 @@ export const observationSchema = z.object({
   ruleId: z.string(),
   ruleVersion: z.string(),
   detectedSeverity: z.enum(priorities),
+  targetPersona: z.enum(targetPersonas).default('frontend'),
   confidence: z.number(),
   facts: z.record(z.unknown()),
   explanation: z.record(z.unknown()),
@@ -345,6 +390,7 @@ export const issueSchema = z.object({
   lastSeen: z.string().datetime(),
   notSeen: z.boolean(),
   affectedUrl: z.string().url().nullable(),
+  targetPersona: z.enum(targetPersonas).nullable().optional(),
   latestRuleId: z.string().nullable(),
   latestObservedAt: z.string().datetime().nullable(),
   confidence: z.number().nullable(),
@@ -386,3 +432,6 @@ export const evidenceSchema = z.object({
 export type Issue = z.infer<typeof issueSchema>;
 export type IssueDetail = z.infer<typeof issueDetailSchema>;
 export type Evidence = z.infer<typeof evidenceSchema>;
+
+export * from './persona-triage.js';
+export * from './discord-dispatcher.js';

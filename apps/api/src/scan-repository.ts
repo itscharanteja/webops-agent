@@ -381,9 +381,10 @@ export class PgScanRepository implements ScanRepository {
         summary: unknown;
         coverage: unknown;
         issue_snapshot: unknown;
+        persona_deliverables: unknown;
         created_at: Date;
       }>(
-        'select id, scan_id, summary, coverage, issue_snapshot, created_at from reports where scan_id = $1',
+        'select id, scan_id, summary, coverage, issue_snapshot, persona_deliverables, created_at from reports where scan_id = $1',
         [id],
       );
       const row = result.rows[0];
@@ -394,6 +395,7 @@ export class PgScanRepository implements ScanRepository {
             summary: row.summary,
             coverage: row.coverage,
             issueSnapshot: row.issue_snapshot,
+            personaDeliverables: (row.persona_deliverables as any) ?? {},
             createdAt: row.created_at.toISOString(),
           }
         : null;

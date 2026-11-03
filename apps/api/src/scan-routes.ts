@@ -7,6 +7,10 @@ import {
   scanPagesResponseSchema,
   scanReportSchema,
   reportListSchema,
+  targetPersonaSchema,
+  type TargetPersona,
+  DiscordDispatcherService,
+  PersonaTriageService,
 } from '@webops/contracts';
 import type { ProjectRepository } from './repository.js';
 import type { ScanRepository } from './scan-repository.js';
@@ -310,6 +314,193 @@ export function registerScanRoutes(app: FastifyInstance, deps: Deps) {
       );
       if (!result) return fail(404, 'NOT_FOUND', 'Project not found');
       return result;
+    },
+  );
+
+  app.get(
+    '/v1/scans/:id/deliverables/:persona/markdown',
+    { schema: { tags: ['scans'] } },
+    async (request, reply) => {
+      const user = await deps.getUser(request);
+      const id = requireId((request.params as { id: string }).id);
+      const personaParam = (request.params as { persona: string }).persona;
+      const parsedPersona = targetPersonaSchema.safeParse(personaParam);
+      if (!parsedPersona.success) {
+        return fail(400, 'INVALID_PERSONA', 'Invalid persona discipline');
+      }
+      const persona = parsedPersona.data;
+      const scan = await requireScans(deps).get(user, id);
+      if (!scan) return fail(404, 'NOT_FOUND', 'Scan not found');
+      const project = await deps.projects.get(user, scan.projectId);
+      if (!project) return fail(404, 'NOT_FOUND', 'Project not found');
+      const report = await requireScans(deps).report(user, id);
+      if (!report) return fail(404, 'NOT_FOUND', 'Report not found');
+
+      let markdown = '';
+      const deliverables = (report.personaDeliverables as any) ?? {};
+      if (deliverables[persona]?.markdownContent) {
+        markdown = deliverables[persona].markdownContent;
+      } else {
+        const triage = new PersonaTriageService();
+        const items = (report.issueSnapshot as any[]).map((snap) => ({
+          issueId: snap.issueId,
+          fingerprint: snap.fingerprint,
+          title: snap.title,
+          description: snap.description,
+          priority: snap.priority,
+          status: snap.status,
+          affectedUrl: snap.affectedUrl,
+          ruleId: snap.ruleId,
+          targetPersona:
+            snap.targetPersona ?? triage.classify(snap.ruleId, snap.facts),
+          observed: snap.explanation?.observed ?? '',
+          impact: snap.explanation?.impact ?? '',
+          reproductionSteps: snap.explanation?.reproductionSteps ?? [],
+          suggestedFix: snap.explanation?.suggestedFix ?? '',
+          evidenceIds: snap.evidenceIds ?? [],
+        }));
+        markdown = triage.generateMarkdownPackage(
+          {
+            id: scan.id,
+            projectId: project.id,
+            projectBaseUrl: project.baseUrl,
+          },
+          persona,
+          items,
+        );
+      }
+
+      return reply
+        .type('text/markdown; charset=utf-8')
+        .header(
+          'content-disposition',
+          `attachment; filename="webops-${persona}-audit-${id.slice(0, 8)}.md"`,
+        )
+        .header('x-content-type-options', 'nosniff')
+        .send(markdown);
+    },
+  );
+
+  app.post(
+    '/v1/projects/:id/discord/test',
+    { schema: { tags: ['projects'] } },
+    async (request, reply) => {
+      const user = await deps.getUser(request);
+      const projectId = requireId((request.params as { id: string }).id);
+      const project = await deps.projects.get(user, projectId);
+      if (!project) return fail(404, 'NOT_FOUND', 'Project not found');
+
+      const body = request.body as { webhookUrl?: string; track?: string };
+      if (!body?.webhookUrl || typeof body.webhookUrl !== 'string') {
+        return fail(400, 'INVALID_BODY', 'webhookUrl is required');
+      }
+
+      const dispatcher = new DiscordDispatcherService();
+      if (!dispatcher.validateDiscordWebhookUrl(body.webhookUrl)) {
+        return fail(
+          400,
+          'INVALID_WEBHOOK_URL',
+          'Webhook URL must be a valid https://discord.com/api/webhooks/ endpoint',
+        );
+      }
+
+      const track = (body.track as TargetPersona | 'general') || 'general';
+      try {
+        await dispatcher.sendTestPing(body.webhookUrl, track);
+        return reply.code(200).send({
+          ok: true,
+          message: 'Discord test ping sent successfully!',
+        });
+      } catch (err) {
+        return fail(
+          502,
+          'DISCORD_DELIVERY_FAILED',
+          err instanceof Error
+            ? err.message
+            : 'Failed to reach Discord webhook',
+        );
+      }
+    },
+  );
+
+  app.post(
+    '/v1/scans/:id/dispatch-discord',
+    { schema: { tags: ['scans'] } },
+    async (request, reply) => {
+      const user = await deps.getUser(request);
+      const id = requireId((request.params as { id: string }).id);
+      const scan = await requireScans(deps).get(user, id);
+      if (!scan) return fail(404, 'NOT_FOUND', 'Scan not found');
+      const project = await deps.projects.get(user, scan.projectId);
+      if (!project) return fail(404, 'NOT_FOUND', 'Project not found');
+      const report = await requireScans(deps).report(user, id);
+      if (!report) return fail(404, 'NOT_FOUND', 'Report not found');
+
+      const body = request.body as { persona?: string };
+      const parsedPersona = targetPersonaSchema.safeParse(body?.persona);
+      if (!parsedPersona.success) {
+        return fail(400, 'INVALID_PERSONA', 'Target persona is required');
+      }
+      const persona = parsedPersona.data;
+
+      const webhooks = project.discordWebhooks;
+      let targetWebhook: string | undefined = undefined;
+      if (webhooks) {
+        if (persona === 'ui_ux') targetWebhook = webhooks.uiUxWebhookUrl;
+        else if (persona === 'frontend')
+          targetWebhook = webhooks.frontendWebhookUrl;
+        else if (persona === 'backend')
+          targetWebhook = webhooks.backendWebhookUrl;
+        else if (persona === 'content_seo')
+          targetWebhook = webhooks.contentSeoWebhookUrl;
+        if (!targetWebhook) targetWebhook = webhooks.defaultWebhookUrl;
+      }
+
+      if (!targetWebhook) {
+        return fail(
+          400,
+          'WEBHOOK_NOT_CONFIGURED',
+          `No Discord webhook configured for ${persona} or general channel in project settings.`,
+        );
+      }
+
+      const dispatcher = new DiscordDispatcherService();
+      const deliverables = (report.personaDeliverables as any) ?? {};
+      const trackSummary = deliverables[persona]?.summary ?? {
+        issueCount: (report.issueSnapshot as any[]).filter(
+          (i) => i.targetPersona === persona,
+        ).length,
+        criticalCount: (report.issueSnapshot as any[]).filter(
+          (i) =>
+            i.targetPersona === persona &&
+            (i.priority === 'P0' || i.priority === 'P1'),
+        ).length,
+      };
+
+      const appBaseUrl =
+        process.env.WEBOPS_WEB_ORIGIN || 'http://localhost:3000';
+
+      try {
+        await dispatcher.dispatchTrackPackage(
+          targetWebhook,
+          id,
+          project.id,
+          persona,
+          trackSummary.issueCount,
+          trackSummary.criticalCount,
+          appBaseUrl,
+        );
+        return reply.code(200).send({
+          ok: true,
+          message: `Dispatched ${persona} deliverable package to Discord!`,
+        });
+      } catch (err) {
+        return fail(
+          502,
+          'DISCORD_DELIVERY_FAILED',
+          err instanceof Error ? err.message : 'Failed to dispatch to Discord',
+        );
+      }
     },
   );
 }

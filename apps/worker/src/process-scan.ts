@@ -8,10 +8,12 @@ import {
   scannerMessageSchema,
   type ScanEvent,
   type ScannerMessage,
+  type TargetPersona,
 } from '@webops/contracts';
 import type { WorkerRepository } from './repository.js';
 import { ArtifactStore, type StoredArtifact } from './artifact-store.js';
 import { validateFinding } from './validate-finding.js';
+import { DiscordDispatcherService } from './discord-dispatcher.js';
 
 const MAX_LINE_BYTES = 1_048_576;
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -320,6 +322,49 @@ export async function processScan(
       },
     );
     await publish(terminal.event).catch(() => undefined);
+
+    if (scan.discordWebhooks && Object.keys(scan.discordWebhooks).length > 0) {
+      try {
+        const dispatcher = new DiscordDispatcherService();
+        const appBaseUrl =
+          process.env.WEBOPS_WEB_ORIGIN || 'http://localhost:3000';
+        const webhookConfigs: Array<{
+          persona: TargetPersona;
+          url?: string | undefined;
+        }> = [
+          { persona: 'ui_ux', url: scan.discordWebhooks.uiUxWebhookUrl },
+          { persona: 'frontend', url: scan.discordWebhooks.frontendWebhookUrl },
+          { persona: 'backend', url: scan.discordWebhooks.backendWebhookUrl },
+          {
+            persona: 'content_seo',
+            url: scan.discordWebhooks.contentSeoWebhookUrl,
+          },
+        ];
+        for (const cfg of webhookConfigs) {
+          if (cfg.url) {
+            await dispatcher
+              .dispatchTrackPackage(
+                cfg.url,
+                scanId,
+                scan.projectId,
+                cfg.persona,
+                payload.visited_urls.length,
+                payload.failed_count,
+                appBaseUrl,
+              )
+              .catch((e) => {
+                process.stderr.write(
+                  `Discord dispatch failed for ${cfg.persona}: ${safeMessage(String(e))}\n`,
+                );
+              });
+          }
+        }
+      } catch (err) {
+        process.stderr.write(
+          `Discord post-scan dispatch warning: ${safeMessage(String(err))}\n`,
+        );
+      }
+    }
   } catch (error) {
     stopGroup(child);
     await exit;
@@ -337,14 +382,20 @@ export async function processScan(
       { attempt },
     );
     if (warning.inserted) await publish(warning.event).catch(() => undefined);
-    if (attempt >= (job.opts.attempts ?? 1)) {
+    const isCancelled =
+      cancelled || (await repo.isCancelRequested(scanId).catch(() => false));
+    if (isCancelled || attempt >= (job.opts.attempts ?? 1)) {
       const coverage = await repo.coverageSoFar(scanId);
-      const status = coverage.visitedUrls.length ? 'partial' : 'failed';
+      const terminalStatus = isCancelled
+        ? 'cancelled'
+        : coverage.visitedUrls.length
+          ? 'partial'
+          : 'failed';
       const terminal = await repo.terminal(
         scanId,
-        status,
+        terminalStatus,
         coverage,
-        safeMessage(message),
+        isCancelled ? null : safeMessage(message),
       );
       await publish(terminal.event).catch(() => undefined);
       return;

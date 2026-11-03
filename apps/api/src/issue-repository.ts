@@ -1,5 +1,5 @@
 import { Pool, type PoolClient } from 'pg';
-import type { Issue, IssueDetail } from '@webops/contracts';
+import type { Issue, IssueDetail, TargetPersona } from '@webops/contracts';
 import type { z } from 'zod';
 import { issuePatchSchema } from '@webops/contracts';
 
@@ -18,6 +18,7 @@ type IssueRow = {
   not_seen: boolean;
   affected_url: string | null;
   latest_rule_id: string | null;
+  target_persona: TargetPersona | null;
   latest_observed_at: Date | null;
   confidence: string | null;
   evidence_count: string;
@@ -41,11 +42,11 @@ type EvidenceRow = {
 
 const issueSelect = `select i.id, i.project_id, i.fingerprint, i.title, i.description, i.priority, i.status,
   i.version, i.first_seen, i.last_seen, i.not_seen, latest.normalized_url as affected_url,
-  latest.rule_id as latest_rule_id, latest.created_at as latest_observed_at,
+  latest.rule_id as latest_rule_id, latest.target_persona, latest.created_at as latest_observed_at,
   latest.confidence::text as confidence,
   (select count(*) from observation_evidence c where c.observation_id = latest.id)::text as evidence_count
   from issues i left join lateral (
-    select o.id, o.rule_id, o.created_at, o.confidence, p.normalized_url
+    select o.id, o.rule_id, o.target_persona, o.created_at, o.confidence, p.normalized_url
     from issue_observations o join scan_pages p on p.id = o.page_id
     where o.issue_id = i.id order by o.created_at desc, o.id desc limit 1
   ) latest on true`;
@@ -65,6 +66,7 @@ function mapIssue(row: IssueRow): Issue {
     notSeen: row.not_seen,
     affectedUrl: row.affected_url,
     latestRuleId: row.latest_rule_id,
+    targetPersona: row.target_persona ?? null,
     latestObservedAt: row.latest_observed_at?.toISOString() ?? null,
     confidence: row.confidence === null ? null : Number(row.confidence),
     evidenceCount: Number(row.evidence_count),
@@ -101,6 +103,7 @@ export class IssueRepository {
       status?: string | undefined;
       priority?: string | undefined;
       ruleId?: string | undefined;
+      persona?: string | undefined;
       sort: 'last_seen' | 'priority' | 'status';
       direction: 'asc' | 'desc';
       limit: number;
@@ -123,12 +126,14 @@ export class IssueRepository {
          and ($2::text is null or i.status = $2)
          and ($3::text is null or i.priority = $3)
          and ($4::text is null or latest.rule_id = $4)
-         order by ${sort} ${options.direction}, i.id asc limit $5 offset $6`,
+         and ($5::text is null or latest.target_persona = $5)
+         order by ${sort} ${options.direction}, i.id asc limit $6 offset $7`,
         [
           projectId,
           options.status ?? null,
           options.priority ?? null,
           options.ruleId ?? null,
+          options.persona ?? null,
           options.limit + 1,
           options.offset,
         ],
@@ -157,12 +162,14 @@ export class IssueRepository {
         rule_id: string;
         rule_version: string;
         detected_severity: Issue['priority'];
+        target_persona: TargetPersona;
         confidence: string;
         facts: Record<string, unknown>;
         explanation_snapshot: Record<string, unknown>;
         created_at: Date;
       }>(
-        `select id, scan_id, page_id, rule_id, rule_version, detected_severity, confidence::text,
+        `select id, scan_id, page_id, rule_id, rule_version, detected_severity,
+           coalesce(target_persona, 'frontend') as target_persona, confidence::text,
            facts, explanation_snapshot, created_at from issue_observations
          where issue_id = $1 order by created_at desc, id desc limit 100`,
         [id],
@@ -200,6 +207,7 @@ export class IssueRepository {
           ruleId: row.rule_id,
           ruleVersion: row.rule_version,
           detectedSeverity: row.detected_severity,
+          targetPersona: row.target_persona,
           confidence: Number(row.confidence),
           facts: row.facts,
           explanation: row.explanation_snapshot,

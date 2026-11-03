@@ -1,8 +1,10 @@
 import { Pool, type PoolClient } from 'pg';
 import {
   crawlLimitsSchema,
+  projectDiscordConfigSchema,
   type CrawlLimits,
   type Project,
+  type ProjectDiscordConfig,
 } from '@webops/contracts';
 
 export interface ProjectData {
@@ -10,6 +12,7 @@ export interface ProjectData {
   baseUrl: string;
   approvedOrigins: string[];
   crawlLimits: CrawlLimits;
+  discordWebhooks?: ProjectDiscordConfig | undefined;
 }
 
 export interface ProjectRepository {
@@ -36,16 +39,23 @@ type ProjectRow = {
   base_url: string;
   approved_origins: string[];
   crawl_defaults: unknown;
+  discord_webhooks?: unknown;
   created_at: Date;
 };
 
 function mapProject(row: ProjectRow): Project {
+  let discordWebhooks: ProjectDiscordConfig | undefined = undefined;
+  if (row.discord_webhooks && typeof row.discord_webhooks === 'object') {
+    const parsed = projectDiscordConfigSchema.safeParse(row.discord_webhooks);
+    if (parsed.success) discordWebhooks = parsed.data;
+  }
   return {
     id: row.id,
     name: row.name,
     baseUrl: row.base_url,
     approvedOrigins: row.approved_origins,
     crawlLimits: crawlLimitsSchema.parse(row.crawl_defaults),
+    discordWebhooks,
     createdAt: row.created_at.toISOString(),
   };
 }
@@ -77,7 +87,7 @@ export class PgProjectRepository implements ProjectRepository {
   list(userId: string, limit: number, offset: number) {
     return this.transaction(userId, async (client) => {
       const result = await client.query<ProjectRow>(
-        'select id, name, base_url, approved_origins, crawl_defaults, created_at from projects order by created_at desc, id desc limit $1 offset $2',
+        'select id, name, base_url, approved_origins, crawl_defaults, discord_webhooks, created_at from projects order by created_at desc, id desc limit $1 offset $2',
         [limit + 1, offset],
       );
       return {
@@ -90,7 +100,7 @@ export class PgProjectRepository implements ProjectRepository {
   get(userId: string, id: string) {
     return this.transaction(userId, async (client) => {
       const result = await client.query<ProjectRow>(
-        'select id, name, base_url, approved_origins, crawl_defaults, created_at from projects where id = $1',
+        'select id, name, base_url, approved_origins, crawl_defaults, discord_webhooks, created_at from projects where id = $1',
         [id],
       );
       return result.rows[0] ? mapProject(result.rows[0]) : null;
@@ -100,15 +110,16 @@ export class PgProjectRepository implements ProjectRepository {
   create(userId: string, data: ProjectData) {
     return this.transaction(userId, async (client) => {
       const result = await client.query<ProjectRow>(
-        `insert into projects (owner_id, name, base_url, approved_origins, crawl_defaults, approval_user_id, approved_at)
-         values ($1, $2, $3, $4, $5, $1, now())
-         returning id, name, base_url, approved_origins, crawl_defaults, created_at`,
+        `insert into projects (owner_id, name, base_url, approved_origins, crawl_defaults, approval_user_id, approved_at, discord_webhooks)
+         values ($1, $2, $3, $4, $5, $1, now(), $6)
+         returning id, name, base_url, approved_origins, crawl_defaults, discord_webhooks, created_at`,
         [
           userId,
           data.name,
           data.baseUrl,
           data.approvedOrigins,
           JSON.stringify(data.crawlLimits),
+          JSON.stringify(data.discordWebhooks ?? {}),
         ],
       );
       const row = result.rows[0];
@@ -132,9 +143,11 @@ export class PgProjectRepository implements ProjectRepository {
       const result = await client.query<ProjectRow>(
         `update projects set name = $3, base_url = $4, approved_origins = $5, crawl_defaults = $6,
          approval_user_id = case when $7 then $2::uuid else approval_user_id end,
-         approved_at = case when $7 then now() else approved_at end, updated_at = now()
+         approved_at = case when $7 then now() else approved_at end,
+         discord_webhooks = coalesce($10::jsonb, discord_webhooks),
+         updated_at = now()
          where id = $1 and owner_id = $2 and base_url = $8 and approved_origins = $9
-         returning id, name, base_url, approved_origins, crawl_defaults, created_at`,
+         returning id, name, base_url, approved_origins, crawl_defaults, discord_webhooks, created_at`,
         [
           id,
           userId,
@@ -145,6 +158,7 @@ export class PgProjectRepository implements ProjectRepository {
           reapproved,
           previous.baseUrl,
           previous.approvedOrigins,
+          data.discordWebhooks ? JSON.stringify(data.discordWebhooks) : null,
         ],
       );
       return result.rows[0] ? mapProject(result.rows[0]) : null;

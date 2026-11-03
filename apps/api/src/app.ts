@@ -73,6 +73,9 @@ async function normalizedData(
     baseUrl: string;
     approvedOrigins: string[];
     crawlLimits?: Record<string, unknown> | undefined;
+    discordWebhooks?:
+      | import('@webops/contracts').ProjectDiscordConfig
+      | undefined;
   },
   resolver?: Resolver,
 ) {
@@ -85,6 +88,7 @@ async function normalizedData(
     name: input.name,
     ...policy,
     crawlLimits: crawlLimitsSchema.parse(input.crawlLimits ?? {}),
+    discordWebhooks: input.discordWebhooks,
   };
 }
 
@@ -323,6 +327,10 @@ export async function buildApp(deps: Deps) {
               ...existing.crawlLimits,
               ...parsed.data.crawlLimits,
             },
+            discordWebhooks:
+              parsed.data.discordWebhooks !== undefined
+                ? parsed.data.discordWebhooks
+                : existing.discordWebhooks,
           },
           deps.resolver,
         );

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Alert,
   Anchor,
@@ -31,8 +31,13 @@ import type {
   Scan,
   ScanEvent,
   ScanPage,
+  TargetPersona,
 } from '@webops/contracts';
-import { apiFetch, apiStream } from '../../../../../lib/client';
+import {
+  apiFetch,
+  apiStream,
+  downloadPersonaMarkdown,
+} from '../../../../../lib/client';
 
 type Coverage = {
   visitedUrls: string[];
@@ -44,6 +49,13 @@ type Coverage = {
 type Report = {
   coverage: Coverage;
   issueSnapshot?: ReportIssueSnapshotItem[];
+  personaDeliverables?: Record<
+    string,
+    {
+      summary?: Record<string, unknown>;
+      markdownContent?: string;
+    }
+  >;
   createdAt?: string;
 };
 
@@ -62,6 +74,7 @@ function formatDuration(start?: string | null, end?: string | null): string {
 
 export default function LiveScanPage() {
   const { id, scanId } = useParams<{ id: string; scanId: string }>();
+  const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [scan, setScan] = useState<Scan | null>(null);
   const [events, setEvents] = useState<ScanEvent[]>([]);
@@ -70,7 +83,7 @@ export default function LiveScanPage() {
   const [error, setError] = useState('');
   const [connection, setConnection] = useState('Agent Initializing…');
   const [cancelling, setCancelling] = useState(false);
-  const [activeTab, setActiveTab] = useState<string | null>('live');
+  const [activeTab, setActiveTab] = useState<string | null>('executive');
   const userChangedTabRef = useRef(false);
   const [autoscroll, setAutoscroll] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,6 +99,109 @@ export default function LiveScanPage() {
     setActiveTab(val);
   }
 
+  // Role-targeted triage state & tracks (IDEA-003)
+  const [dispatchingTrack, setDispatchingTrack] = useState<string | null>(null);
+  const [dispatchAlert, setDispatchAlert] = useState<{
+    persona: string;
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  const uiUxFindings = useMemo(() => {
+    return (report?.issueSnapshot ?? []).filter((f) => {
+      return (
+        f.targetPersona === 'ui_ux' ||
+        [
+          'HORIZONTAL_OVERFLOW',
+          'CONTRAST_DEFECT',
+          'VISUAL_OVERLAP_CLIPPING',
+          'UX_CONVERSION_FRICTION',
+        ].includes(f.ruleId)
+      );
+    });
+  }, [report?.issueSnapshot]);
+
+  const frontendFindings = useMemo(() => {
+    return (report?.issueSnapshot ?? []).filter((f) => {
+      if (f.targetPersona) return f.targetPersona === 'frontend';
+      return [
+        'UNLABELED_FORM_CONTROL',
+        'JS_CONSOLE_ERROR',
+        'BROKEN_INTERNAL_LINK',
+        'BROKEN_VISUAL_STATE',
+      ].includes(f.ruleId);
+    });
+  }, [report?.issueSnapshot]);
+
+  const backendFindings = useMemo(() => {
+    return (report?.issueSnapshot ?? []).filter((f) => {
+      if (f.targetPersona) return f.targetPersona === 'backend';
+      return (
+        f.ruleId === 'FAILED_FIRST_PARTY_REQUEST' ||
+        f.ruleId === 'SLOW_TTFB' ||
+        (f.ruleId === 'HTTP_PAGE_ERROR' && Number(f.facts?.status) >= 500)
+      );
+    });
+  }, [report?.issueSnapshot]);
+
+  const contentSeoFindings = useMemo(() => {
+    return (report?.issueSnapshot ?? []).filter((f) => {
+      if (f.targetPersona) return f.targetPersona === 'content_seo';
+      return ['MISSING_PAGE_TITLE', 'MISSING_IMAGE_ALT'].includes(f.ruleId);
+    });
+  }, [report?.issueSnapshot]);
+
+  async function handlePushToDiscord(persona: TargetPersona) {
+    setDispatchingTrack(persona);
+    setDispatchAlert(null);
+    try {
+      const res = await apiFetch(`/v1/scans/${scanId}/dispatch-discord`, {
+        method: 'POST',
+        body: JSON.stringify({ persona }),
+      });
+      setDispatchAlert({
+        persona,
+        success: true,
+        message: res.message || `Dispatched to Discord channel!`,
+      });
+    } catch (err) {
+      setDispatchAlert({
+        persona,
+        success: false,
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Failed to dispatch to Discord channel',
+      });
+    } finally {
+      setDispatchingTrack(null);
+    }
+  }
+
+  async function handleDownloadPersonaMarkdown(persona: TargetPersona) {
+    const cached = report?.personaDeliverables?.[persona]?.markdownContent;
+    if (cached) {
+      const blob = new Blob([cached], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `webops-${persona}-audit-${scanId.slice(0, 8)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    try {
+      await downloadPersonaMarkdown(scanId, persona);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not download persona deliverable',
+      );
+    }
+  }
+
   useEffect(() => {
     let stopped = false;
     const controller = new AbortController();
@@ -95,6 +211,10 @@ export default function LiveScanPage() {
         const current: Scan = await apiFetch(`/v1/scans/${scanId}`);
         if (stopped) return;
         setScan(current);
+        if (!terminal.has(current.status)) {
+          router.replace(`/projects/${id}/scans/${scanId}/live`);
+          return;
+        }
         if (terminal.has(current.status)) {
           const [pageData, reportData] = await Promise.all([
             apiFetch(`/v1/scans/${scanId}/pages?limit=100`),
@@ -836,6 +956,14 @@ export default function LiveScanPage() {
             >
               Historical Reports
             </Button>
+            <Button
+              component={Link}
+              href={`/projects/${id}/scans/${scanId}/live`}
+              variant="default"
+              size="sm"
+            >
+              💻 Developer Console & Logs
+            </Button>
             {scan && !terminal.has(scan.status) && (
               <Button
                 color="red"
@@ -1055,7 +1183,7 @@ export default function LiveScanPage() {
 
           <Card withBorder padding="md" radius="md">
             <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-              Pages Audited
+              Pages Audited / Total Pages to Audit (Max Pages)
             </Text>
             <Group justify="space-between" align="flex-end" mt="xs">
               <Text size="xl" fw={700}>
@@ -1127,14 +1255,6 @@ export default function LiveScanPage() {
         <Card withBorder padding="lg" radius="md">
           <Tabs value={activeTab} onChange={handleTabChange} color="blue">
             <Tabs.List mb="lg">
-              <Tabs.Tab value="live">
-                ⚡ Live Mission Control
-                {isScanning && (
-                  <Badge size="xs" color="blue" circle variant="filled" ml={4}>
-                    •
-                  </Badge>
-                )}
-              </Tabs.Tab>
               <Tabs.Tab value="executive">
                 📋 Executive Brief & AI Synthesis
               </Tabs.Tab>
@@ -1147,6 +1267,14 @@ export default function LiveScanPage() {
               </Tabs.Tab>
               <Tabs.Tab value="console">
                 💻 Developer CLI ({events.length})
+              </Tabs.Tab>
+              <Tabs.Tab value="live">
+                ⚡ Live Mission Control
+                {isScanning && (
+                  <Badge size="xs" color="blue" circle variant="filled" ml={4}>
+                    •
+                  </Badge>
+                )}
               </Tabs.Tab>
             </Tabs.List>
 
@@ -1199,6 +1327,234 @@ export default function LiveScanPage() {
                     </Group>
                   </Group>
                 </Paper>
+
+                {/* 📦 Role-Targeted Deliverables & Discord Channel Dispatch (IDEA-003) */}
+                <Card withBorder padding="lg" radius="md">
+                  <Stack gap="md">
+                    <Group justify="space-between" align="center" wrap="wrap">
+                      <div>
+                        <Group gap="xs">
+                          <Title order={3}>
+                            📦 Role-Targeted Deliverables & Discord Dispatch
+                          </Title>
+                          <Badge color="indigo" variant="light">
+                            IDEA-003 Multi-Persona
+                          </Badge>
+                        </Group>
+                        <Text size="sm" c="dimmed">
+                          Autonomous triage has segmented verified findings into
+                          tailored deliverables. Export role-specific specs or
+                          push directly to designated Discord channels:
+                        </Text>
+                      </div>
+                    </Group>
+
+                    {dispatchAlert && (
+                      <Alert
+                        color={dispatchAlert.success ? 'green' : 'red'}
+                        withCloseButton
+                        onClose={() => setDispatchAlert(null)}
+                      >
+                        {dispatchAlert.message}
+                      </Alert>
+                    )}
+
+                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+                      {/* 1. UI/UX Design Spec */}
+                      <Paper
+                        withBorder
+                        p="md"
+                        radius="md"
+                        style={{
+                          borderColor: 'var(--mantine-color-violet-4)',
+                        }}
+                      >
+                        <Stack justify="space-between" h="100%">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text fw={700} c="violet.9">
+                                🎨 UI/UX Design Spec
+                              </Text>
+                              <Badge color="violet" size="sm" variant="light">
+                                {uiUxFindings.length} issues
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              Viewport overflows, WCAG contrast defects, and
+                              visual overlap clipping with token adjustments.
+                            </Text>
+                          </Stack>
+                          <Stack gap="xs" mt="sm">
+                            <Button
+                              variant="light"
+                              color="violet"
+                              size="xs"
+                              onClick={() =>
+                                handleDownloadPersonaMarkdown('ui_ux')
+                              }
+                            >
+                              ⬇️ Download Spec (.md)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              color="violet"
+                              size="xs"
+                              loading={dispatchingTrack === 'ui_ux'}
+                              onClick={() => handlePushToDiscord('ui_ux')}
+                            >
+                              🚀 Push to #ui-ux-design
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Paper>
+
+                      {/* 2. Frontend Task Backlog */}
+                      <Paper
+                        withBorder
+                        p="md"
+                        radius="md"
+                        style={{
+                          borderColor: 'var(--mantine-color-blue-4)',
+                        }}
+                      >
+                        <Stack justify="space-between" h="100%">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text fw={700} c="blue.9">
+                                💻 Frontend Task Backlog
+                              </Text>
+                              <Badge color="blue" size="sm" variant="light">
+                                {frontendFindings.length} issues
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              Unlabeled form controls, console script errors,
+                              and broken links with CSS locators & React
+                              patches.
+                            </Text>
+                          </Stack>
+                          <Stack gap="xs" mt="sm">
+                            <Button
+                              variant="light"
+                              color="blue"
+                              size="xs"
+                              onClick={() =>
+                                handleDownloadPersonaMarkdown('frontend')
+                              }
+                            >
+                              ⬇️ Download Tasks (.md)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              color="blue"
+                              size="xs"
+                              loading={dispatchingTrack === 'frontend'}
+                              onClick={() => handlePushToDiscord('frontend')}
+                            >
+                              🚀 Push to #frontend-bugs
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Paper>
+
+                      {/* 3. Backend SRE Runbook */}
+                      <Paper
+                        withBorder
+                        p="md"
+                        radius="md"
+                        style={{
+                          borderColor: 'var(--mantine-color-red-4)',
+                        }}
+                      >
+                        <Stack justify="space-between" h="100%">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text fw={700} c="red.9">
+                                ⚙️ Backend SRE Runbook
+                              </Text>
+                              <Badge color="red" size="sm" variant="light">
+                                {backendFindings.length} issues
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              HTTP 5xx server failures, API network timeouts,
+                              and traces with copy-paste cURL reproduction.
+                            </Text>
+                          </Stack>
+                          <Stack gap="xs" mt="sm">
+                            <Button
+                              variant="light"
+                              color="red"
+                              size="xs"
+                              onClick={() =>
+                                handleDownloadPersonaMarkdown('backend')
+                              }
+                            >
+                              ⬇️ Download Runbook (.md)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              color="red"
+                              size="xs"
+                              loading={dispatchingTrack === 'backend'}
+                              onClick={() => handlePushToDiscord('backend')}
+                            >
+                              🚨 Push to #backend-alerts
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Paper>
+
+                      {/* 4. Content & SEO Checklist */}
+                      <Paper
+                        withBorder
+                        p="md"
+                        radius="md"
+                        style={{
+                          borderColor: 'var(--mantine-color-teal-4)',
+                        }}
+                      >
+                        <Stack justify="space-between" h="100%">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text fw={700} c="teal.9">
+                                📝 Content & SEO
+                              </Text>
+                              <Badge color="teal" size="sm" variant="light">
+                                {contentSeoFindings.length} issues
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              Missing page titles, blank image alt text, and
+                              search indexing metadata accessibility checklist.
+                            </Text>
+                          </Stack>
+                          <Stack gap="xs" mt="sm">
+                            <Button
+                              variant="light"
+                              color="teal"
+                              size="xs"
+                              onClick={() =>
+                                handleDownloadPersonaMarkdown('content_seo')
+                              }
+                            >
+                              ⬇️ Download Checklist (.md)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              color="teal"
+                              size="xs"
+                              loading={dispatchingTrack === 'content_seo'}
+                              onClick={() => handlePushToDiscord('content_seo')}
+                            >
+                              🚀 Push to #content-seo
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Paper>
+                    </SimpleGrid>
+                  </Stack>
+                </Card>
 
                 {/* 6-Stage Autonomous Pipeline Tracker */}
                 <Paper withBorder p="md" radius="md">
@@ -1666,6 +2022,234 @@ export default function LiveScanPage() {
                     </Group>
                   </Group>
                 </Paper>
+
+                {/* 📦 Role-Targeted Deliverables & Discord Channel Dispatch (IDEA-003) */}
+                <Card withBorder padding="lg" radius="md">
+                  <Stack gap="md">
+                    <Group justify="space-between" align="center" wrap="wrap">
+                      <div>
+                        <Group gap="xs">
+                          <Title order={3}>
+                            📦 Role-Targeted Deliverables & Discord Dispatch
+                          </Title>
+                          <Badge color="indigo" variant="light">
+                            IDEA-003 Multi-Persona
+                          </Badge>
+                        </Group>
+                        <Text size="sm" c="dimmed">
+                          Autonomous triage has segmented verified findings into
+                          tailored deliverables. Export role-specific specs or
+                          push directly to designated Discord channels:
+                        </Text>
+                      </div>
+                    </Group>
+
+                    {dispatchAlert && (
+                      <Alert
+                        color={dispatchAlert.success ? 'green' : 'red'}
+                        withCloseButton
+                        onClose={() => setDispatchAlert(null)}
+                      >
+                        {dispatchAlert.message}
+                      </Alert>
+                    )}
+
+                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+                      {/* 1. UI/UX Design Spec */}
+                      <Paper
+                        withBorder
+                        p="md"
+                        radius="md"
+                        style={{
+                          borderColor: 'var(--mantine-color-violet-4)',
+                        }}
+                      >
+                        <Stack justify="space-between" h="100%">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text fw={700} c="violet.9">
+                                🎨 UI/UX Design Spec
+                              </Text>
+                              <Badge color="violet" size="sm" variant="light">
+                                {uiUxFindings.length} issues
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              Viewport overflows, WCAG contrast defects, and
+                              visual overlap clipping with token adjustments.
+                            </Text>
+                          </Stack>
+                          <Stack gap="xs" mt="sm">
+                            <Button
+                              variant="light"
+                              color="violet"
+                              size="xs"
+                              onClick={() =>
+                                handleDownloadPersonaMarkdown('ui_ux')
+                              }
+                            >
+                              ⬇️ Download Spec (.md)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              color="violet"
+                              size="xs"
+                              loading={dispatchingTrack === 'ui_ux'}
+                              onClick={() => handlePushToDiscord('ui_ux')}
+                            >
+                              🚀 Push to #ui-ux-design
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Paper>
+
+                      {/* 2. Frontend Task Backlog */}
+                      <Paper
+                        withBorder
+                        p="md"
+                        radius="md"
+                        style={{
+                          borderColor: 'var(--mantine-color-blue-4)',
+                        }}
+                      >
+                        <Stack justify="space-between" h="100%">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text fw={700} c="blue.9">
+                                💻 Frontend Task Backlog
+                              </Text>
+                              <Badge color="blue" size="sm" variant="light">
+                                {frontendFindings.length} issues
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              Unlabeled form controls, console script errors,
+                              and broken links with CSS locators & React
+                              patches.
+                            </Text>
+                          </Stack>
+                          <Stack gap="xs" mt="sm">
+                            <Button
+                              variant="light"
+                              color="blue"
+                              size="xs"
+                              onClick={() =>
+                                handleDownloadPersonaMarkdown('frontend')
+                              }
+                            >
+                              ⬇️ Download Tasks (.md)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              color="blue"
+                              size="xs"
+                              loading={dispatchingTrack === 'frontend'}
+                              onClick={() => handlePushToDiscord('frontend')}
+                            >
+                              🚀 Push to #frontend-bugs
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Paper>
+
+                      {/* 3. Backend SRE Runbook */}
+                      <Paper
+                        withBorder
+                        p="md"
+                        radius="md"
+                        style={{
+                          borderColor: 'var(--mantine-color-red-4)',
+                        }}
+                      >
+                        <Stack justify="space-between" h="100%">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text fw={700} c="red.9">
+                                ⚙️ Backend SRE Runbook
+                              </Text>
+                              <Badge color="red" size="sm" variant="light">
+                                {backendFindings.length} issues
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              HTTP 5xx server failures, API network timeouts,
+                              and traces with copy-paste cURL reproduction.
+                            </Text>
+                          </Stack>
+                          <Stack gap="xs" mt="sm">
+                            <Button
+                              variant="light"
+                              color="red"
+                              size="xs"
+                              onClick={() =>
+                                handleDownloadPersonaMarkdown('backend')
+                              }
+                            >
+                              ⬇️ Download Runbook (.md)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              color="red"
+                              size="xs"
+                              loading={dispatchingTrack === 'backend'}
+                              onClick={() => handlePushToDiscord('backend')}
+                            >
+                              🚨 Push to #backend-alerts
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Paper>
+
+                      {/* 4. Content & SEO Checklist */}
+                      <Paper
+                        withBorder
+                        p="md"
+                        radius="md"
+                        style={{
+                          borderColor: 'var(--mantine-color-teal-4)',
+                        }}
+                      >
+                        <Stack justify="space-between" h="100%">
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text fw={700} c="teal.9">
+                                📝 Content & SEO
+                              </Text>
+                              <Badge color="teal" size="sm" variant="light">
+                                {contentSeoFindings.length} issues
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed">
+                              Missing page titles, blank image alt text, and
+                              search indexing metadata accessibility checklist.
+                            </Text>
+                          </Stack>
+                          <Stack gap="xs" mt="sm">
+                            <Button
+                              variant="light"
+                              color="teal"
+                              size="xs"
+                              onClick={() =>
+                                handleDownloadPersonaMarkdown('content_seo')
+                              }
+                            >
+                              ⬇️ Download Checklist (.md)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              color="teal"
+                              size="xs"
+                              loading={dispatchingTrack === 'content_seo'}
+                              onClick={() => handlePushToDiscord('content_seo')}
+                            >
+                              🚀 Push to #content-seo
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Paper>
+                    </SimpleGrid>
+                  </Stack>
+                </Card>
 
                 {/* Primary Urgent Focus Defect Spotlight (Only when defects exist) */}
                 {primaryFocusFinding && (

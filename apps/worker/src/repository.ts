@@ -1,11 +1,17 @@
 import { Pool, type PoolClient } from 'pg';
 import type {
+  ProjectDiscordConfig,
   ReportIssueSnapshotItem,
   ScanEvent,
   ScannerMessage,
+  TargetPersona,
 } from '@webops/contracts';
 import type { StoredArtifact } from './artifact-store.js';
 import { fingerprint } from './fingerprint.js';
+import {
+  PersonaTriageService,
+  type FindingWithPersona,
+} from './persona-triage.js';
 
 type EventRow = {
   scan_id: string;
@@ -22,12 +28,16 @@ type ScanRow = {
   status: string;
   cancel_requested_at: Date | null;
   config_snapshot: unknown;
+  project_base_url?: string;
+  discord_webhooks?: unknown;
 };
 export type ScanJob = {
   id: string;
   projectId: string;
+  projectBaseUrl: string;
   status: string;
   cancelRequested: boolean;
+  discordWebhooks?: ProjectDiscordConfig;
   config: {
     v: number;
     baseUrl: string;
@@ -49,6 +59,7 @@ function mapEvent(row: EventRow): ScanEvent {
 }
 
 export class WorkerRepository {
+  private readonly triage = new PersonaTriageService();
   constructor(private readonly pool: Pool) {}
   async close() {
     await this.pool.end();
@@ -108,7 +119,11 @@ export class WorkerRepository {
   load(scanId: string): Promise<ScanJob | null> {
     return this.tx(scanId, async (client) => {
       const result = await client.query<ScanRow>(
-        'select id, project_id, status, cancel_requested_at, config_snapshot from scans where id = $1',
+        `select s.id, s.project_id, s.status, s.cancel_requested_at, s.config_snapshot,
+                p.base_url as project_base_url, p.discord_webhooks
+         from scans s
+         join projects p on p.id = s.project_id
+         where s.id = $1`,
         [scanId],
       );
       const row = result.rows[0];
@@ -119,8 +134,11 @@ export class WorkerRepository {
       return {
         id: row.id,
         projectId: row.project_id,
+        projectBaseUrl: row.project_base_url || config.baseUrl,
         status: row.status,
         cancelRequested: !!row.cancel_requested_at,
+        discordWebhooks:
+          (row.discord_webhooks as ProjectDiscordConfig) ?? undefined,
         config,
       };
     });
@@ -270,10 +288,14 @@ export class WorkerRepository {
         reproductionSteps: finding.reproduction_steps,
         suggestedFix: finding.suggested_fix,
       };
+      const targetPersona = this.triage.classify(
+        finding.rule_id,
+        finding.facts,
+      );
       const observation = await client.query<{ id: string }>(
         `insert into issue_observations (issue_id, scan_id, page_id, fingerprint, rule_id, rule_version,
-           detected_severity, confidence, facts, explanation_snapshot)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           detected_severity, target_persona, confidence, facts, explanation_snapshot)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
          on conflict (scan_id, fingerprint, page_id) do nothing returning id`,
         [
           issueId,
@@ -283,6 +305,7 @@ export class WorkerRepository {
           finding.rule_id,
           finding.rule_version,
           finding.priority,
+          targetPersona,
           finding.confidence,
           JSON.stringify(finding.facts),
           JSON.stringify(explanation),
@@ -409,6 +432,7 @@ export class WorkerRepository {
           rule_id: string;
           rule_version: string;
           detected_severity: ReportIssueSnapshotItem['detectedSeverity'];
+          target_persona: TargetPersona;
           confidence: string;
           facts: Record<string, unknown>;
           explanation: Record<string, unknown>;
@@ -425,6 +449,7 @@ export class WorkerRepository {
              o.rule_id,
              o.rule_version,
              o.detected_severity,
+             coalesce(o.target_persona, 'frontend') as target_persona,
              o.confidence::text as confidence,
              o.facts,
              o.explanation_snapshot as explanation
@@ -472,6 +497,7 @@ export class WorkerRepository {
               ruleId: row.rule_id,
               ruleVersion: row.rule_version,
               detectedSeverity: row.detected_severity,
+              targetPersona: row.target_persona,
               confidence: Number(row.confidence),
               facts: row.facts,
               explanation: row.explanation,
@@ -481,14 +507,76 @@ export class WorkerRepository {
           },
         );
 
+        const projectQuery = await client.query<{
+          base_url: string;
+          project_id: string;
+        }>(
+          `select p.base_url, s.project_id
+           from scans s join projects p on p.id = s.project_id
+           where s.id = $1`,
+          [scanId],
+        );
+        const projectBaseUrl = projectQuery.rows[0]?.base_url ?? '';
+        const projectId = projectQuery.rows[0]?.project_id ?? '';
+
+        const findingItems: FindingWithPersona[] = snapshot.map((item) => {
+          const exp = item.explanation as any;
+          return {
+            issueId: item.issueId,
+            fingerprint: item.fingerprint,
+            title: item.title,
+            description: item.description,
+            priority: item.priority,
+            status: item.status,
+            affectedUrl: item.affectedUrl,
+            ruleId: item.ruleId,
+            targetPersona: item.targetPersona,
+            observed: String(exp?.observed ?? ''),
+            impact: String(exp?.impact ?? ''),
+            reproductionSteps: Array.isArray(exp?.reproductionSteps)
+              ? exp.reproductionSteps
+              : [],
+            suggestedFix: String(exp?.suggestedFix ?? ''),
+            remediationAdvice: (item as any).remediationAdvice,
+            evidenceIds: item.evidenceIds,
+          };
+        });
+
+        const scanContext = {
+          id: scanId,
+          projectId,
+          projectBaseUrl,
+        };
+
+        const personaDeliverables: Record<string, unknown> = {};
+        const personas: TargetPersona[] = [
+          'ui_ux',
+          'frontend',
+          'backend',
+          'content_seo',
+        ];
+        const summaries = this.triage.summarizePackages(findingItems);
+        for (const p of personas) {
+          personaDeliverables[p] = {
+            summary: summaries[p],
+            markdownContent: this.triage.generateMarkdownPackage(
+              scanContext,
+              p,
+              findingItems,
+            ),
+          };
+        }
+
         await client.query(
-          `insert into reports (scan_id, summary, coverage, issue_snapshot)
-           values ($1, $2, $3, $4) on conflict (scan_id) do nothing`,
+          `insert into reports (scan_id, summary, coverage, issue_snapshot, persona_deliverables)
+           values ($1, $2, $3, $4, $5)
+           on conflict (scan_id) do nothing`,
           [
             scanId,
             JSON.stringify({ v: 1, status, issueCount: snapshot.length }),
             JSON.stringify({ v: 1, ...coverage }),
             JSON.stringify(snapshot),
+            JSON.stringify(personaDeliverables),
           ],
         );
       }

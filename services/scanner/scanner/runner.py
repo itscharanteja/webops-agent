@@ -23,6 +23,9 @@ from .visual_agent import run_visual_audit
 from .interaction_agent import explore_page_interactions
 from .crawl_prioritizer import prioritize_links
 
+PAGE_LOAD_TIMEOUT_MS: int = 7000  # 7 seconds timeout for waiting webpage to load full
+PAGE_LOAD_TIMEOUT_SECS: float = 7.0
+
 
 def key(prefix: str, value: str) -> str:
     return f"{prefix}:{sha256(value.encode()).hexdigest()}"
@@ -161,7 +164,8 @@ class Crawler:
                             visited_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
         page: Page = await context.new_page()
         page.set_default_timeout(self.request.limits.pageTimeoutMs)
-        page.set_default_navigation_timeout(self.request.limits.navigationTimeoutMs)
+        nav_timeout_ms = min(getattr(self.request.limits, "navigationTimeoutMs", PAGE_LOAD_TIMEOUT_MS) or PAGE_LOAD_TIMEOUT_MS, PAGE_LOAD_TIMEOUT_MS)
+        page.set_default_navigation_timeout(nav_timeout_ms)
         def console_seen(msg):
             if len(result.console) >= 100:
                 return
@@ -195,10 +199,29 @@ class Crawler:
         page.on("requestfailed", failed)
         page.on("response", response_seen)
         try:
-            response = await asyncio.wait_for(
-                page.goto(url, wait_until="domcontentloaded", timeout=self.request.limits.navigationTimeoutMs),
-                timeout=self.request.limits.pageTimeoutMs / 1000,
-            )
+            # 1. Wait for webpage to load full with a 7-second timeout (nav_timeout_ms)
+            # 2. Check and wait until document.readyState state reaches 'complete'
+            async def _load_full_page():
+                resp = await page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                    timeout=nav_timeout_ms,
+                )
+                # Wait until the document and subresources finish loading
+                await page.wait_for_function(
+                    "() => document.readyState === 'complete'",
+                    timeout=nav_timeout_ms,
+                )
+                # Verify document.readyState state is complete
+                state = await page.evaluate("() => document.readyState")
+                if state != "complete":
+                    raise RuntimeError(
+                        f"Webpage not fully loaded: document.readyState is '{state}', expected 'complete'"
+                    )
+                return resp
+
+            timeout_secs = nav_timeout_ms / 1000.0
+            response = await asyncio.wait_for(_load_full_page(), timeout=timeout_secs)
             result.status = response.status if response else None
             try:
                 final = normalize_url(page.url)
@@ -207,6 +230,9 @@ class Crawler:
             except PolicyError:
                 pass
             result.title = safe_text(await page.title(), 500)
+
+            # Webpage is confirmed fully loaded (document.readyState === 'complete').
+            # Then only the agent crawls (extracts links, interacts, checks, visual audit).
             result.links = await page.locator("a[href]").evaluate_all(
                 "els => els.filter(e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden').map((e,i) => ({url:e.href,text:(e.textContent||'').trim().slice(0,200),locator:'a[href] index '+i})).slice(0,1000)"
             )
@@ -241,9 +267,17 @@ class Crawler:
                     if shot:
                         result.screenshots.append((viewport, shot))
         except Exception as error:
-            result.limitation = safe_text(str(error), 300)
+            err_msg = str(error).strip()
+            if not err_msg:
+                if isinstance(error, (asyncio.TimeoutError, TimeoutError)):
+                    err_msg = f"Navigation timeout after {timeout_secs}s"
+                else:
+                    err_msg = error.__class__.__name__ or "Navigation error"
+            result.limitation = safe_text(err_msg, 300)
             result.failed_requests.append({"url": safe_url(url)[:2048], "error": result.limitation})
         finally:
+            if result.status is None and not result.limitation:
+                result.limitation = "No HTTP response received"
             result.timing_ms = max(0, int((time.monotonic() - started) * 1000))
             await page.close()
         return result
@@ -251,6 +285,8 @@ class Crawler:
     async def run(self) -> None:
         base = await self.policy.validate(self.request.base_url)
         self.emitter.event("crawl", "info", "Crawl started", "crawl-start", {"baseUrl": safe_url(base)})
+        self.emitter.event("crawl", "debug", f"Discovered {safe_url(base)}", key("discover", base),
+                           {"source": "seed", "destination": safe_url(base), "url": safe_url(base), "text": "Base Target"})
         pending = deque([(base, 0)])
         seen = {base}
         async with async_playwright() as playwright:
@@ -280,6 +316,13 @@ class Crawler:
                         batch.append((url, depth))
                     if not batch:
                         continue
+                    for url, depth in batch:
+                        self.emitter.event(
+                            "crawl", "info",
+                            f"Crawling {safe_url(url)} (depth {depth})",
+                            key("crawling", f"{url}:{depth}"),
+                            {"url": safe_url(url), "depth": depth, "status": "crawling"},
+                        )
                     results = await asyncio.gather(*(self.inspect(context, url, depth) for url, depth in batch))
                     new_pending_links: list[tuple[str, int, str]] = []
                     for result in results:
@@ -346,7 +389,7 @@ class Crawler:
                             else:
                                 new_pending_links.append((link, result.depth + 1, safe_text(link_item.get("text", ""), 100)))
                                 self.emitter.event("crawl", "debug", f"Discovered {safe_url(link)}", key("discover", link),
-                                                   {"source": safe_url(result.url), "destination": safe_url(link)})
+                                                   {"source": safe_url(result.url), "destination": safe_url(link), "url": safe_url(link), "text": safe_text(link_item.get("text", ""), 100)})
                     if new_pending_links:
                         all_pending = [(item[0], item[1], "") for item in pending] + new_pending_links
                         ranked = prioritize_links(all_pending, self.request.limits.maxPages - len(self.visited))
@@ -425,7 +468,7 @@ class Crawler:
                     [{"kind": "dom", "locator": link["locator"], "payload": {"v": 1, "anchorText": safe_text(link["text"], 200), "sourceUrl": source_safe}},
                      {"kind": "url", "locator": link["locator"], "payload": {"v": 1, "sourceUrl": source_safe,
                       "destinationUrl": dest_safe, "finalUrl": target.final_url, "status": target.status,
-                      "error": target.limitation, "capturedAt": target.visited_at}}],
+                      "error": target.limitation or "Destination failed to load", "capturedAt": target.visited_at}}],
                     {"url": source_safe, "destination": dest_safe, "status": target.status})
                 self.send_finding(key("finding", source.url + "BROKEN_INTERNAL_LINK" + destination), item)
 

@@ -77,7 +77,7 @@
                         "type": "integer",
                         "minimum": 1000,
                         "maximum": 30000,
-                        "default": 10000
+                        "default": 7000
                       },
                       "pageTimeoutMs": {
                         "type": "integer",
@@ -96,6 +96,37 @@
                         "minimum": 0.1,
                         "maximum": 5,
                         "default": 2
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "discordWebhooks": {
+                    "type": "object",
+                    "properties": {
+                      "uiUxWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
+                      },
+                      "frontendWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
+                      },
+                      "backendWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
+                      },
+                      "contentSeoWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
+                      },
+                      "defaultWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
                       }
                     },
                     "additionalProperties": false
@@ -164,7 +195,7 @@
                           "type": "integer",
                           "minimum": 1000,
                           "maximum": 30000,
-                          "default": 10000
+                          "default": 7000
                         },
                         "pageTimeoutMs": {
                           "type": "integer",
@@ -183,6 +214,37 @@
                           "minimum": 0.1,
                           "maximum": 5,
                           "default": 2
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "discordWebhooks": {
+                      "type": "object",
+                      "properties": {
+                        "uiUxWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "frontendWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "backendWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "contentSeoWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "defaultWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
                         }
                       },
                       "additionalProperties": false
@@ -267,7 +329,7 @@
                                 "type": "integer",
                                 "minimum": 1000,
                                 "maximum": 30000,
-                                "default": 10000
+                                "default": 7000
                               },
                               "pageTimeoutMs": {
                                 "type": "integer",
@@ -286,6 +348,37 @@
                                 "minimum": 0.1,
                                 "maximum": 5,
                                 "default": 2
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "discordWebhooks": {
+                            "type": "object",
+                            "properties": {
+                              "uiUxWebhookUrl": {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 2048
+                              },
+                              "frontendWebhookUrl": {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 2048
+                              },
+                              "backendWebhookUrl": {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 2048
+                              },
+                              "contentSeoWebhookUrl": {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 2048
+                              },
+                              "defaultWebhookUrl": {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 2048
                               }
                             },
                             "additionalProperties": false
@@ -395,7 +488,7 @@
                           "type": "integer",
                           "minimum": 1000,
                           "maximum": 30000,
-                          "default": 10000
+                          "default": 7000
                         },
                         "pageTimeoutMs": {
                           "type": "integer",
@@ -414,6 +507,37 @@
                           "minimum": 0.1,
                           "maximum": 5,
                           "default": 2
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "discordWebhooks": {
+                      "type": "object",
+                      "properties": {
+                        "uiUxWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "frontendWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "backendWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "contentSeoWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "defaultWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
                         }
                       },
                       "additionalProperties": false
@@ -493,7 +617,7 @@
                         "type": "integer",
                         "minimum": 1000,
                         "maximum": 30000,
-                        "default": 10000
+                        "default": 7000
                       },
                       "pageTimeoutMs": {
                         "type": "integer",
@@ -512,6 +636,37 @@
                         "minimum": 0.1,
                         "maximum": 5,
                         "default": 2
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "discordWebhooks": {
+                    "type": "object",
+                    "properties": {
+                      "uiUxWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
+                      },
+                      "frontendWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
+                      },
+                      "backendWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
+                      },
+                      "contentSeoWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
+                      },
+                      "defaultWebhookUrl": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2048
                       }
                     },
                     "additionalProperties": false
@@ -589,7 +744,7 @@
                           "type": "integer",
                           "minimum": 1000,
                           "maximum": 30000,
-                          "default": 10000
+                          "default": 7000
                         },
                         "pageTimeoutMs": {
                           "type": "integer",
@@ -608,6 +763,37 @@
                           "minimum": 0.1,
                           "maximum": 5,
                           "default": 2
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "discordWebhooks": {
+                      "type": "object",
+                      "properties": {
+                        "uiUxWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "frontendWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "backendWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "contentSeoWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "defaultWebhookUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
                         }
                       },
                       "additionalProperties": false
@@ -1555,6 +1741,16 @@
                               "P3"
                             ]
                           },
+                          "targetPersona": {
+                            "type": "string",
+                            "enum": [
+                              "ui_ux",
+                              "frontend",
+                              "backend",
+                              "content_seo"
+                            ],
+                            "default": "frontend"
+                          },
                           "confidence": {
                             "type": "number"
                           },
@@ -1565,6 +1761,53 @@
                           "explanation": {
                             "type": "object",
                             "additionalProperties": {}
+                          },
+                          "remediationAdvice": {
+                            "type": "object",
+                            "properties": {
+                              "persona": {
+                                "type": "string",
+                                "enum": [
+                                  "ui_ux",
+                                  "frontend",
+                                  "backend",
+                                  "content_seo"
+                                ]
+                              },
+                              "headline": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "impactAssessment": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "concreteFix": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4000
+                              },
+                              "codeOrTokenSnippet": {
+                                "type": "string"
+                              },
+                              "evidenceCitations": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              }
+                            },
+                            "required": [
+                              "persona",
+                              "headline",
+                              "impactAssessment",
+                              "concreteFix",
+                              "evidenceCitations"
+                            ],
+                            "additionalProperties": false
                           },
                           "evidenceIds": {
                             "type": "array",
@@ -1624,6 +1867,10 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "personaDeliverables": {
+                      "type": "object",
+                      "additionalProperties": {}
                     },
                     "createdAt": {
                       "type": "string",
@@ -1793,6 +2040,80 @@
         }
       }
     },
+    "/scans/{id}/deliverables/{persona}/markdown": {
+      "get": {
+        "tags": [
+          "scans"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "persona",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/projects/{id}/discord/test": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/scans/{id}/dispatch-discord": {
+      "post": {
+        "tags": [
+          "scans"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/projects/{id}/issues": {
       "get": {
         "tags": [
@@ -1875,6 +2196,22 @@
                               {
                                 "type": "string",
                                 "format": "uri"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "targetPersona": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "ui_ux",
+                                  "frontend",
+                                  "backend",
+                                  "content_seo"
+                                ]
                               },
                               {
                                 "type": "null"
@@ -2035,6 +2372,22 @@
                         }
                       ]
                     },
+                    "targetPersona": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "ui_ux",
+                            "frontend",
+                            "backend",
+                            "content_seo"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "latestRuleId": {
                       "type": [
                         "null",
@@ -2092,6 +2445,16 @@
                               "P2",
                               "P3"
                             ]
+                          },
+                          "targetPersona": {
+                            "type": "string",
+                            "enum": [
+                              "ui_ux",
+                              "frontend",
+                              "backend",
+                              "content_seo"
+                            ],
+                            "default": "frontend"
                           },
                           "confidence": {
                             "type": "number"
@@ -2340,6 +2703,22 @@
                         }
                       ]
                     },
+                    "targetPersona": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "ui_ux",
+                            "frontend",
+                            "backend",
+                            "content_seo"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "latestRuleId": {
                       "type": [
                         "null",
@@ -2397,6 +2776,16 @@
                               "P2",
                               "P3"
                             ]
+                          },
+                          "targetPersona": {
+                            "type": "string",
+                            "enum": [
+                              "ui_ux",
+                              "frontend",
+                              "backend",
+                              "content_seo"
+                            ],
+                            "default": "frontend"
                           },
                           "confidence": {
                             "type": "number"

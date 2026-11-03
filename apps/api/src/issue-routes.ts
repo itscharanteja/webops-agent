@@ -8,6 +8,7 @@ import {
   issueSchema,
   issueStatusSchema,
   prioritySchema,
+  targetPersonaSchema,
 } from '@webops/contracts';
 import type { IssueRepository } from './issue-repository.js';
 import { ArtifactStore } from './artifact-store.js';
@@ -61,6 +62,11 @@ export function registerIssueRoutes(app: FastifyInstance, deps: Deps) {
         fail(400, 'INVALID_FILTER', 'Invalid status');
       if (query.priority && !prioritySchema.safeParse(query.priority).success)
         fail(400, 'INVALID_FILTER', 'Invalid priority');
+      if (
+        query.persona &&
+        !targetPersonaSchema.safeParse(query.persona).success
+      )
+        fail(400, 'INVALID_FILTER', 'Invalid persona');
       const sort = query.sort ?? 'last_seen';
       const direction = query.direction ?? 'desc';
       if (
@@ -72,6 +78,7 @@ export function registerIssueRoutes(app: FastifyInstance, deps: Deps) {
         status: query.status,
         priority: query.priority,
         ruleId: query.ruleId,
+        persona: query.persona,
         sort: sort as 'last_seen' | 'priority' | 'status',
         direction: direction as 'asc' | 'desc',
         limit: Math.max(1, pagination(query.limit, 20, 100)),

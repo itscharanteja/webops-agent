@@ -65,6 +65,36 @@ export async function downloadIssueMarkdown(issueId: string): Promise<void> {
   }
 }
 
+export async function downloadPersonaMarkdown(
+  scanId: string,
+  persona: string,
+): Promise<void> {
+  const response = await authorizedFetch(
+    `/v1/scans/${scanId}/deliverables/${persona}/markdown`,
+  );
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(
+      errorBody?.error?.message ??
+        `Download failed with status ${response.status}`,
+    );
+  }
+  const blob = await response.blob();
+  const header = response.headers.get('content-disposition') ?? '';
+  const match = /filename="([^"]+)"/.exec(header);
+  const filename =
+    match?.[1] ?? `webops-${persona}-audit-${scanId.slice(0, 8)}.md`;
+  const url = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export async function apiStream(
   path: string,
   after: number,

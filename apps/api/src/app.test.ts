@@ -306,4 +306,94 @@ describe('project API boundary', () => {
     });
     expect(fetched.statusCode).toBe(404);
   });
+
+  it('saves and updates Discord webhook configuration', async () => {
+    const { app } = await fixtureApp();
+    const create = await app.inject({
+      method: 'POST',
+      url: '/v1/projects',
+      headers: { authorization: `Bearer ${ownerA}` },
+      payload: {
+        name: 'Project with Webhooks',
+        baseUrl: 'https://example.com',
+        approvedOrigins: ['https://example.com'],
+        authorizationConfirmed: true,
+        discordWebhooks: {
+          uiUxWebhookUrl: 'https://discord.com/api/webhooks/123/ui',
+          backendWebhookUrl: 'https://discord.com/api/webhooks/123/be',
+        },
+      },
+    });
+    expect(create.statusCode).toBe(201);
+    const body = create.json();
+    expect(body.discordWebhooks?.uiUxWebhookUrl).toBe(
+      'https://discord.com/api/webhooks/123/ui',
+    );
+    expect(body.discordWebhooks?.backendWebhookUrl).toBe(
+      'https://discord.com/api/webhooks/123/be',
+    );
+
+    // Patch webhooks
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: `/v1/projects/${body.id}`,
+      headers: { authorization: `Bearer ${ownerA}` },
+      payload: {
+        discordWebhooks: {
+          frontendWebhookUrl: 'https://discord.com/api/webhooks/123/fe',
+        },
+      },
+    });
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().discordWebhooks?.frontendWebhookUrl).toBe(
+      'https://discord.com/api/webhooks/123/fe',
+    );
+  });
+
+  it('validates Discord webhook URL in test endpoint', async () => {
+    const { app } = await fixtureApp();
+    const create = await app.inject({
+      method: 'POST',
+      url: '/v1/projects',
+      headers: { authorization: `Bearer ${ownerA}` },
+      payload: {
+        name: 'Test Project',
+        baseUrl: 'https://example.com',
+        approvedOrigins: ['https://example.com'],
+        authorizationConfirmed: true,
+      },
+    });
+    const project = create.json();
+
+    // Reject non-discord or SSRF webhook URL
+    const invalidTest = await app.inject({
+      method: 'POST',
+      url: `/v1/projects/${project.id}/discord/test`,
+      headers: { authorization: `Bearer ${ownerA}` },
+      payload: {
+        webhookUrl: 'https://evil.com/hook',
+        track: 'backend',
+      },
+    });
+    expect(invalidTest.statusCode).toBe(400);
+    expect(invalidTest.json().error.code).toBe('INVALID_WEBHOOK_URL');
+  });
+
+  it('handles deliverable markdown endpoint validation', async () => {
+    const { app } = await fixtureApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/scans/00000000-0000-4000-8000-000000000001/deliverables/invalid_role/markdown',
+      headers: { authorization: `Bearer ${ownerA}` },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_PERSONA');
+
+    const notFound = await app.inject({
+      method: 'GET',
+      url: '/v1/scans/00000000-0000-4000-8000-000000000001/deliverables/frontend/markdown',
+      headers: { authorization: `Bearer ${ownerA}` },
+    });
+    expect([404, 503]).toContain(notFound.statusCode);
+  });
 });

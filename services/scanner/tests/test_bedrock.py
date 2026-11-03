@@ -1,6 +1,11 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from scanner.bedrock import explain_finding_with_bedrock, get_bedrock_client
+from scanner.bedrock import (
+    classify_persona,
+    build_persona_prompt,
+    explain_finding_with_bedrock,
+    get_bedrock_client,
+)
 from scanner.runner import Crawler
 
 
@@ -19,6 +24,33 @@ class TestBedrock(unittest.TestCase):
         client.assert_not_called()
         crawler.emitter.send.assert_called_once_with("finding", "finding-1", finding)
 
+    def test_classify_persona(self):
+        self.assertEqual(classify_persona("CONTRAST_DEFECT"), "ui_ux")
+        self.assertEqual(classify_persona("HORIZONTAL_OVERFLOW"), "ui_ux")
+        self.assertEqual(classify_persona("VISUAL_OVERLAP_CLIPPING"), "ui_ux")
+        self.assertEqual(classify_persona("FAILED_FIRST_PARTY_REQUEST"), "backend")
+        self.assertEqual(classify_persona("HTTP_PAGE_ERROR", {"status": 500}), "backend")
+        self.assertEqual(classify_persona("HTTP_PAGE_ERROR", {"status": 404}), "frontend")
+        self.assertEqual(classify_persona("MISSING_PAGE_TITLE"), "content_seo")
+        self.assertEqual(classify_persona("MISSING_IMAGE_ALT"), "content_seo")
+        self.assertEqual(classify_persona("UNLABELED_FORM_CONTROL"), "frontend")
+
+    def test_build_persona_prompt_role_instructions(self):
+        finding = {"rule_id": "CONTRAST_DEFECT", "observed": "Contrast 2.8:1"}
+        prompt_ui = build_persona_prompt(finding, ["ev-1"], "ui_ux")
+        self.assertIn("Principal Product Designer", prompt_ui)
+        self.assertIn("WCAG / Design System Tokens", prompt_ui)
+
+        prompt_be = build_persona_prompt(finding, ["ev-1"], "backend")
+        self.assertIn("Staff Site Reliability Engineer", prompt_be)
+        self.assertIn("Reproduction cURL", prompt_be)
+
+        prompt_fe = build_persona_prompt(finding, ["ev-1"], "frontend")
+        self.assertIn("Principal Frontend Engineer", prompt_fe)
+
+        prompt_seo = build_persona_prompt(finding, ["ev-1"], "content_seo")
+        self.assertIn("Content Strategist", prompt_seo)
+
     def test_explain_finding_returns_none_when_client_fails(self):
         with patch("scanner.bedrock.get_bedrock_client", return_value=None):
             result = explain_finding_with_bedrock({"rule_id": "TEST"}, ["ev-1"])
@@ -31,7 +63,7 @@ class TestBedrock(unittest.TestCase):
                 "message": {
                     "content": [
                         {
-                            "text": '{"summary": "Test summary", "impact": "Test impact", "suggested_fix": "Add alt attribute", "cited_evidence_ids": ["ev-1"]}'
+                            "text": '{"summary": "Test summary", "impact": "Test impact", "suggested_fix": "Add alt attribute", "code_or_token_snippet": "alt=\\"logo\\"", "cited_evidence_ids": ["ev-1"]}'
                         }
                     ]
                 }
@@ -45,7 +77,9 @@ class TestBedrock(unittest.TestCase):
             self.assertIsNotNone(result)
             self.assertEqual(result["summary"], "Test summary")
             self.assertEqual(result["suggested_fix"], "Add alt attribute")
+            self.assertEqual(result["code_or_token_snippet"], 'alt="logo"')
             self.assertEqual(result["cited_evidence_ids"], ["ev-1"])
+            self.assertEqual(result["target_persona"], "content_seo")
 
     def test_explain_finding_handles_malformed_json_with_fallback(self):
         mock_client = MagicMock()

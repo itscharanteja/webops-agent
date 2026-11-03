@@ -37,7 +37,10 @@ export function validateFinding(finding: Finding): void {
         const data = object(item.payload);
         return (
           data.sourceUrl === finding.page_url &&
-          (Number(data.status) >= 400 || text(data.error))
+          (Number(data.status) >= 400 ||
+            text(data.error) ||
+            data.status === null ||
+            data.status === undefined)
         );
       });
       break;
@@ -53,7 +56,10 @@ export function validateFinding(finding: Finding): void {
           return (
             data.sourceUrl === finding.page_url &&
             data.destinationUrl === finding.target &&
-            (Number(data.status) >= 400 || text(data.error))
+            (Number(data.status) >= 400 ||
+              text(data.error) ||
+              data.status === null ||
+              data.status === undefined)
           );
         });
       break;

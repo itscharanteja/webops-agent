@@ -41,7 +41,7 @@ export interface paths {
                                     maxDepth: number;
                                     /** @default 2 */
                                     concurrency: number;
-                                    /** @default 10000 */
+                                    /** @default 7000 */
                                     navigationTimeoutMs: number;
                                     /** @default 60000 */
                                     pageTimeoutMs: number;
@@ -49,6 +49,18 @@ export interface paths {
                                     scanTimeoutMs: number;
                                     /** @default 2 */
                                     requestsPerSecond: number;
+                                };
+                                discordWebhooks?: {
+                                    /** Format: uri */
+                                    uiUxWebhookUrl?: string;
+                                    /** Format: uri */
+                                    frontendWebhookUrl?: string;
+                                    /** Format: uri */
+                                    backendWebhookUrl?: string;
+                                    /** Format: uri */
+                                    contentSeoWebhookUrl?: string;
+                                    /** Format: uri */
+                                    defaultWebhookUrl?: string;
                                 };
                                 /** Format: date-time */
                                 createdAt: string;
@@ -83,7 +95,7 @@ export interface paths {
                             maxDepth?: number;
                             /** @default 2 */
                             concurrency?: number;
-                            /** @default 10000 */
+                            /** @default 7000 */
                             navigationTimeoutMs?: number;
                             /** @default 60000 */
                             pageTimeoutMs?: number;
@@ -91,6 +103,18 @@ export interface paths {
                             scanTimeoutMs?: number;
                             /** @default 2 */
                             requestsPerSecond?: number;
+                        };
+                        discordWebhooks?: {
+                            /** Format: uri */
+                            uiUxWebhookUrl?: string;
+                            /** Format: uri */
+                            frontendWebhookUrl?: string;
+                            /** Format: uri */
+                            backendWebhookUrl?: string;
+                            /** Format: uri */
+                            contentSeoWebhookUrl?: string;
+                            /** Format: uri */
+                            defaultWebhookUrl?: string;
                         };
                     };
                 };
@@ -116,7 +140,7 @@ export interface paths {
                                 maxDepth: number;
                                 /** @default 2 */
                                 concurrency: number;
-                                /** @default 10000 */
+                                /** @default 7000 */
                                 navigationTimeoutMs: number;
                                 /** @default 60000 */
                                 pageTimeoutMs: number;
@@ -124,6 +148,18 @@ export interface paths {
                                 scanTimeoutMs: number;
                                 /** @default 2 */
                                 requestsPerSecond: number;
+                            };
+                            discordWebhooks?: {
+                                /** Format: uri */
+                                uiUxWebhookUrl?: string;
+                                /** Format: uri */
+                                frontendWebhookUrl?: string;
+                                /** Format: uri */
+                                backendWebhookUrl?: string;
+                                /** Format: uri */
+                                contentSeoWebhookUrl?: string;
+                                /** Format: uri */
+                                defaultWebhookUrl?: string;
                             };
                             /** Format: date-time */
                             createdAt: string;
@@ -176,7 +212,7 @@ export interface paths {
                                 maxDepth: number;
                                 /** @default 2 */
                                 concurrency: number;
-                                /** @default 10000 */
+                                /** @default 7000 */
                                 navigationTimeoutMs: number;
                                 /** @default 60000 */
                                 pageTimeoutMs: number;
@@ -184,6 +220,18 @@ export interface paths {
                                 scanTimeoutMs: number;
                                 /** @default 2 */
                                 requestsPerSecond: number;
+                            };
+                            discordWebhooks?: {
+                                /** Format: uri */
+                                uiUxWebhookUrl?: string;
+                                /** Format: uri */
+                                frontendWebhookUrl?: string;
+                                /** Format: uri */
+                                backendWebhookUrl?: string;
+                                /** Format: uri */
+                                contentSeoWebhookUrl?: string;
+                                /** Format: uri */
+                                defaultWebhookUrl?: string;
                             };
                             /** Format: date-time */
                             createdAt: string;
@@ -239,7 +287,7 @@ export interface paths {
                             maxDepth?: number;
                             /** @default 2 */
                             concurrency?: number;
-                            /** @default 10000 */
+                            /** @default 7000 */
                             navigationTimeoutMs?: number;
                             /** @default 60000 */
                             pageTimeoutMs?: number;
@@ -247,6 +295,18 @@ export interface paths {
                             scanTimeoutMs?: number;
                             /** @default 2 */
                             requestsPerSecond?: number;
+                        };
+                        discordWebhooks?: {
+                            /** Format: uri */
+                            uiUxWebhookUrl?: string;
+                            /** Format: uri */
+                            frontendWebhookUrl?: string;
+                            /** Format: uri */
+                            backendWebhookUrl?: string;
+                            /** Format: uri */
+                            contentSeoWebhookUrl?: string;
+                            /** Format: uri */
+                            defaultWebhookUrl?: string;
                         };
                         /** @enum {boolean} */
                         authorizationConfirmed?: true;
@@ -274,7 +334,7 @@ export interface paths {
                                 maxDepth: number;
                                 /** @default 2 */
                                 concurrency: number;
-                                /** @default 10000 */
+                                /** @default 7000 */
                                 navigationTimeoutMs: number;
                                 /** @default 60000 */
                                 pageTimeoutMs: number;
@@ -282,6 +342,18 @@ export interface paths {
                                 scanTimeoutMs: number;
                                 /** @default 2 */
                                 requestsPerSecond: number;
+                            };
+                            discordWebhooks?: {
+                                /** Format: uri */
+                                uiUxWebhookUrl?: string;
+                                /** Format: uri */
+                                frontendWebhookUrl?: string;
+                                /** Format: uri */
+                                backendWebhookUrl?: string;
+                                /** Format: uri */
+                                contentSeoWebhookUrl?: string;
+                                /** Format: uri */
+                                defaultWebhookUrl?: string;
                             };
                             /** Format: date-time */
                             createdAt: string;
@@ -665,12 +737,26 @@ export interface paths {
                                 ruleVersion: string;
                                 /** @enum {string} */
                                 detectedSeverity: "P0" | "P1" | "P2" | "P3";
+                                /**
+                                 * @default frontend
+                                 * @enum {string}
+                                 */
+                                targetPersona: "ui_ux" | "frontend" | "backend" | "content_seo";
                                 confidence: number;
                                 facts: {
                                     [key: string]: unknown;
                                 };
                                 explanation: {
                                     [key: string]: unknown;
+                                };
+                                remediationAdvice?: {
+                                    /** @enum {string} */
+                                    persona: "ui_ux" | "frontend" | "backend" | "content_seo";
+                                    headline: string;
+                                    impactAssessment: string;
+                                    concreteFix: string;
+                                    codeOrTokenSnippet?: string;
+                                    evidenceCitations: string[];
                                 };
                                 evidenceIds: string[];
                                 citations: {
@@ -681,6 +767,9 @@ export interface paths {
                                     kind: "screenshot" | "dom" | "console" | "network" | "url";
                                 }[];
                             }[];
+                            personaDeliverables?: {
+                                [key: string]: unknown;
+                            };
                             /** Format: date-time */
                             createdAt: string;
                         };
@@ -760,6 +849,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/scans/{id}/deliverables/{persona}/markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    persona: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/discord/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{id}/dispatch-discord": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{id}/issues": {
         parameters: {
             query?: never;
@@ -804,6 +999,7 @@ export interface paths {
                                 lastSeen: string;
                                 notSeen: boolean;
                                 affectedUrl: string | null;
+                                targetPersona?: ("ui_ux" | "frontend" | "backend" | "content_seo") | null;
                                 latestRuleId: null | string;
                                 latestObservedAt: string | null;
                                 confidence: null | number;
@@ -866,6 +1062,7 @@ export interface paths {
                             lastSeen: string;
                             notSeen: boolean;
                             affectedUrl: string | null;
+                            targetPersona?: ("ui_ux" | "frontend" | "backend" | "content_seo") | null;
                             latestRuleId: null | string;
                             latestObservedAt: string | null;
                             confidence: null | number;
@@ -881,6 +1078,11 @@ export interface paths {
                                 ruleVersion: string;
                                 /** @enum {string} */
                                 detectedSeverity: "P0" | "P1" | "P2" | "P3";
+                                /**
+                                 * @default frontend
+                                 * @enum {string}
+                                 */
+                                targetPersona: "ui_ux" | "frontend" | "backend" | "content_seo";
                                 confidence: number;
                                 facts: {
                                     [key: string]: unknown;
@@ -968,6 +1170,7 @@ export interface paths {
                             lastSeen: string;
                             notSeen: boolean;
                             affectedUrl: string | null;
+                            targetPersona?: ("ui_ux" | "frontend" | "backend" | "content_seo") | null;
                             latestRuleId: null | string;
                             latestObservedAt: string | null;
                             confidence: null | number;
@@ -983,6 +1186,11 @@ export interface paths {
                                 ruleVersion: string;
                                 /** @enum {string} */
                                 detectedSeverity: "P0" | "P1" | "P2" | "P3";
+                                /**
+                                 * @default frontend
+                                 * @enum {string}
+                                 */
+                                targetPersona: "ui_ux" | "frontend" | "backend" | "content_seo";
                                 confidence: number;
                                 facts: {
                                     [key: string]: unknown;

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   Alert,
   Anchor,
@@ -11,19 +11,25 @@ import {
   Card,
   Container,
   Group,
+  SegmentedControl,
   Select,
   Stack,
   Table,
   Text,
   Title,
 } from '@mantine/core';
-import type { Issue, Project } from '@webops/contracts';
+import type { Issue, Project, TargetPersona } from '@webops/contracts';
 import { apiFetch } from '../../../../lib/client';
 
 export default function IssuesBoard() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialPersona = searchParams.get('persona') || 'all';
+
   const [project, setProject] = useState<Project | null>(null);
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [persona, setPersona] = useState<string>(initialPersona);
   const [status, setStatus] = useState<string | null>(null);
   const [priority, setPriority] = useState<string | null>(null);
   const [sort, setSort] = useState('last_seen');
@@ -43,6 +49,7 @@ export default function IssuesBoard() {
         });
         if (status) query.set('status', status);
         if (priority) query.set('priority', priority);
+        if (persona && persona !== 'all') query.set('persona', persona);
         const result = await apiFetch(`/v1/projects/${id}/issues?${query}`);
         setIssues((previous) =>
           offset === 0 ? result.items : [...previous, ...result.items],
@@ -55,7 +62,7 @@ export default function IssuesBoard() {
         );
       }
     },
-    [id, status, priority, sort, direction],
+    [id, status, priority, persona, sort, direction],
   );
 
   useEffect(() => {
@@ -63,9 +70,18 @@ export default function IssuesBoard() {
       .then(setProject)
       .catch(() => undefined);
   }, [id]);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  const handlePersonaChange = (val: string) => {
+    setPersona(val);
+    const params = new URLSearchParams(window.location.search);
+    if (val === 'all') params.delete('persona');
+    else params.set('persona', val);
+    router.replace(`?${params.toString()}`);
+  };
 
   async function edit(issue: Issue, patch: Record<string, string>) {
     setBusy(issue.id);
@@ -89,6 +105,36 @@ export default function IssuesBoard() {
     }
   }
 
+  const getPersonaBadge = (p?: TargetPersona | string | null) => {
+    switch (p) {
+      case 'ui_ux':
+        return (
+          <Badge color="violet" size="xs" variant="light">
+            🎨 Design
+          </Badge>
+        );
+      case 'backend':
+        return (
+          <Badge color="red" size="xs" variant="light">
+            ⚙️ Backend
+          </Badge>
+        );
+      case 'content_seo':
+        return (
+          <Badge color="green" size="xs" variant="light">
+            📝 Content
+          </Badge>
+        );
+      case 'frontend':
+      default:
+        return (
+          <Badge color="blue" size="xs" variant="light">
+            💻 Frontend
+          </Badge>
+        );
+    }
+  };
+
   return (
     <Container size="xl" py="xl">
       <Stack gap="lg">
@@ -96,7 +142,7 @@ export default function IssuesBoard() {
           ← {project?.name ?? 'Project'}
         </Anchor>
         <Group justify="space-between">
-          <Title order={1}>Issues</Title>
+          <Title order={1}>Issues Board</Title>
           <Badge size="lg">{issues.length} shown</Badge>
         </Group>
         {error && (
@@ -104,6 +150,29 @@ export default function IssuesBoard() {
             {error}
           </Alert>
         )}
+
+        {/* Persona Pill / Discipline Selector */}
+        <Card withBorder p="sm">
+          <Stack gap="xs">
+            <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+              Filter by Target Persona / Discipline
+            </Text>
+            <SegmentedControl
+              value={persona}
+              onChange={handlePersonaChange}
+              data={[
+                { label: 'All Disciplines', value: 'all' },
+                { label: '🎨 Design & UX', value: 'ui_ux' },
+                { label: '💻 Frontend', value: 'frontend' },
+                { label: '⚙️ Backend & SRE', value: 'backend' },
+                { label: '📝 Content & SEO', value: 'content_seo' },
+              ]}
+              color="indigo"
+              fullWidth
+            />
+          </Stack>
+        </Card>
+
         <Card withBorder>
           <Group align="end">
             <Select
@@ -157,6 +226,7 @@ export default function IssuesBoard() {
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Issue</Table.Th>
+                  <Table.Th>Track</Table.Th>
                   <Table.Th>Rule</Table.Th>
                   <Table.Th>Priority</Table.Th>
                   <Table.Th>Status</Table.Th>
@@ -186,6 +256,7 @@ export default function IssuesBoard() {
                         </Text>
                       </Stack>
                     </Table.Td>
+                    <Table.Td>{getPersonaBadge(issue.targetPersona)}</Table.Td>
                     <Table.Td>
                       <Text size="xs">{issue.latestRuleId}</Text>
                     </Table.Td>
