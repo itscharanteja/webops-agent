@@ -21,15 +21,14 @@ Parameters:
   DBPassword:
     Type: String
     NoEcho: true
-    Default: 'WebOpsAdmin2026!Secure'
     Description: 'Master password for PostgreSQL database'
   BedrockRegion:
     Type: String
-    Default: 'us-east-1'
+    Default: 'ap-south-1'
     Description: 'AWS Region for Bedrock model invocations (Claude 3.5 Sonnet / Claude 3)'
   BedrockModelId:
     Type: String
-    Default: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+    Default: 'apac.amazon.nova-lite-v1:0'
     Description: 'Inference profile or model ID in AWS Bedrock'
   ApiImageUri:
     Type: String
@@ -236,11 +235,6 @@ Resources:
           ToPort: 5432
           SourceSecurityGroupId: !Ref EcsSecurityGroup
           Description: 'Allow ECS tasks to PostgreSQL'
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          CidrIp: '0.0.0.0/0'
-          Description: 'Allow DB migration tooling from deploy machine'
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: '0.0.0.0/0'
@@ -293,6 +287,8 @@ Resources:
   # =========================================================================
   Database:
     Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
     Properties:
       DBInstanceIdentifier: !Sub '${EnvironmentName}-postgres'
       Engine: postgres
@@ -306,12 +302,55 @@ Resources:
       DBSubnetGroupName: !Ref DBSubnetGroup
       VPCSecurityGroups:
         - !Ref DatabaseSecurityGroup
-      PubliclyAccessible: true
+      PubliclyAccessible: false
       BackupRetentionPeriod: 0
-      DeletionProtection: false
+      DeletionProtection: true
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-postgres'
+
+  DatabaseBackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: !Sub '${EnvironmentName}-db-backups'
+
+  DatabaseBackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup'
+
+  DatabaseBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub '${EnvironmentName}-daily-db'
+        BackupPlanRule:
+          - RuleName: DailyDatabaseSnapshot
+            TargetBackupVault: !Ref DatabaseBackupVault
+            ScheduleExpression: 'cron(30 20 ? * * *)'
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 180
+            EnableContinuousBackup: false
+            Lifecycle:
+              DeleteAfterDays: 14
+
+  DatabaseBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref DatabaseBackupPlan
+      BackupSelection:
+        SelectionName: !Sub '${EnvironmentName}-postgres'
+        IamRoleArn: !GetAtt DatabaseBackupRole.Arn
+        Resources:
+          - !Sub 'arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:${Database}'
 
   # =========================================================================
   # Amazon ElastiCache Redis (cache.t4g.micro)
@@ -329,6 +368,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-redis'
+
+  RedisReplicationGroup:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupId: !Sub '${EnvironmentName}-redis-rg'
+      ReplicationGroupDescription: !Sub '${EnvironmentName} BullMQ and scan event cache'
+      PrimaryClusterId: !Ref RedisCluster
+      AutomaticFailoverEnabled: false
+      TransitEncryptionEnabled: true
+      TransitEncryptionMode: required
 
   # =========================================================================
   # IAM Roles
@@ -521,10 +570,14 @@ Resources:
               Value: '4000'
             - Name: HOST
               Value: '0.0.0.0'
+            - Name: ENABLE_EXTERNAL_SCANS
+              Value: 'true'
+            - Name: WEB_ORIGIN
+              Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
             - Name: DATABASE_URL
               Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops?sslmode=require'
             - Name: REDIS_URL
-              Value: !Sub 'redis://${RedisCluster.RedisEndpoint.Address}:${RedisCluster.RedisEndpoint.Port}'
+              Value: !Sub 'rediss://${RedisReplicationGroup.PrimaryEndPoint.Address}:${RedisReplicationGroup.PrimaryEndPoint.Port}'
             - Name: COGNITO_USER_POOL_ID
               Value: !Ref UserPool
             - Name: COGNITO_CLIENT_ID
@@ -586,7 +639,7 @@ Resources:
             - Name: WORKER_DATABASE_URL
               Value: !Sub 'postgresql://webops_admin:${DBPassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/webops?sslmode=require'
             - Name: REDIS_URL
-              Value: !Sub 'redis://${RedisCluster.RedisEndpoint.Address}:${RedisCluster.RedisEndpoint.Port}'
+              Value: !Sub 'rediss://${RedisReplicationGroup.PrimaryEndPoint.Address}:${RedisReplicationGroup.PrimaryEndPoint.Port}'
             - Name: S3_BUCKET_NAME
               Value: !Ref ArtifactsBucket
             - Name: AWS_REGION

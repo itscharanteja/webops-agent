@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebOps — Developer workspace</title>
+    <style>
+            :root{--bg:#f7f8fa;--surface:#fff;--ink:#202a35;--muted:#687480;--line:#e7ebee;--green:#19735a;--green-soft:#eaf5ef;--orange:#985014;--orange-soft:#fff4e7;--red:#b54745;--red-soft:#fcefee;--blue:#426aa0;--radius:12px;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
+            [hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:default;opacity:.4}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #71ad95;outline-offset:3px}button{color:inherit}a{color:var(--green)}h1,h2,h3,p{margin:0}h1{font-size:28px;letter-spacing:-1px;font-weight:650}h2{font-size:16px;font-weight:650;letter-spacing:-.25px}h3{font-size:13px;font-weight:600}.muted{color:var(--muted)}.small{font-size:12px}.mono{font-family:var(--mono);font-size:12px}.icon{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:7px 12px;border:1px solid #dce2e6;border-radius:7px;background:white;font-size:12px;font-weight:550;white-space:nowrap}.btn:hover{background:#f2f5f4}.btn.primary{color:white;background:var(--green);border-color:var(--green);box-shadow:0 2px 3px #154d3714}.btn.primary:hover{background:#125b46}.btn.ghost{background:transparent;border-color:transparent}.btn.icononly{padding:7px;min-width:34px}.textbtn{border:0;background:transparent;padding:0;color:var(--green);font-size:12px;font-weight:600;text-align:left}.badge{display:inline-flex;align-items:center;gap:5px;border-radius:5px;padding:3px 7px;font-size:11px;font-weight:550;white-space:nowrap;background:#f0f2f4;color:#586470}.badge.green{background:var(--green-soft);color:var(--green)}.badge.orange{background:var(--orange-soft);color:var(--orange)}.badge.red{background:var(--red-soft);color:var(--red)}.dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}.pill{border:1px solid var(--line);border-radius:5px;padding:2px 6px;color:var(--muted);font-size:11px;background:white}.app{min-height:100vh;display:grid;grid-template-columns:218px minmax(0,1fr)}.sidebar{position:sticky;top:0;height:100vh;border-right:1px solid var(--line);padding:27px 16px 18px;background:#fbfcfc;display:flex;flex-direction:column}.brand{font-weight:750;letter-spacing:-.7px;font-size:22px;padding:0 11px;gap:10px}.brandmark{display:grid;place-items:center;width:30px;height:30px;background:#203c32;border-radius:8px;color:#fff}.brandmark .icon{width:22px}.workspace{margin-top:33px;padding:10px;border:1px solid var(--line);border-radius:8px;display:flex;gap:9px;align-items:center;background:white}.avatar{display:grid;place-items:center;background:#e8ede9;border:1px solid #dde5df;border-radius:6px;width:29px;height:29px;font-size:11px;font-weight:650}.nav-label{font-size:10px;font-weight:650;letter-spacing:1.3px;color:#84908e;margin:29px 12px 10px}.nav{display:flex;flex-direction:column;gap:5px}.nav button{display:flex;gap:11px;align-items:center;width:100%;text-align:left;padding:10px 12px;border:0;background:transparent;color:#63706c;border-radius:7px;font-size:13px}.nav button:hover{background:#f0f4f1}.nav button.active{background:#e9f1ec;color:#245c44;font-weight:600}.nav .count{margin-left:auto;font-size:11px;background:#dbe8df;padding:0 6px;border-radius:4px}.sidebar-bottom{margin-top:auto}.safe-note{margin:20px 7px 22px;padding:12px;border:1px solid var(--line);border-radius:8px;background:white}.safe-note p{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.6}.profile{padding:14px 7px 0;border-top:1px solid var(--line)}.topbar{height:64px;background:#ffffffb3;border-bottom:1px solid var(--line);padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:12px}.crumb{font-size:12px;color:var(--muted)}.crumb span{margin:0 10px;color:#b4bdc3}.topnote{font-size:11px;color:#718077;display:flex;gap:9px;align-items:center}.main{padding:24px 32px 20px;max-width:1600px;margin:auto}.heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:20px}.heading p{margin-top:5px;color:var(--muted);font-size:12px}.title-icon{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:white;display:grid;place-items:center;color:var(--green)}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}.metric{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:13px 19px}.metric-label{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted)}.metric-label .icon{width:16px;color:#84948c}.metric-value{font-size:30px;font-weight:600;letter-spacing:-1.2px;margin:6px 0 3px;line-height:1.35}.metric-value small{font-size:14px;letter-spacing:0;color:#8a959d;font-weight:400;margin-left:4px}.metric-foot{font-size:11px;color:var(--muted)}.metric-foot strong{color:var(--green);font-weight:500}.scan-banner{padding:15px 18px;border:1px solid #dce8e1;border-radius:10px;background:#f0f6f2;display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.scan-mark{display:grid;place-items:center;background:#dceee3;width:33px;height:33px;border-radius:50%;color:var(--green)}.scan-banner p{font-size:11px;color:#64766b;margin-top:2px}.scan-title{font-weight:600;font-size:12px}.scan-banner .btn{background:transparent;border-color:#ccdcd1}.context-toggle{display:none}.workgrid{display:grid;grid-template-columns:minmax(0,1fr) 258px;gap:20px;align-items:start}.panel{border:1px solid var(--line);border-radius:var(--radius);background:white;overflow:hidden}.panel-head{padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px}.panel-head p{font-size:11px;color:var(--muted);margin-top:3px}.tabs{display:flex;gap:22px;padding:0 20px;border-bottom:1px solid var(--line);overflow-x:auto}.tab{display:flex;align-items:center;gap:6px;white-space:nowrap;border:0;background:none;padding:0 0 13px;font-size:12px;color:var(--muted);border-bottom:2px solid transparent}.tab[aria-pressed=true]{border-color:var(--green);color:var(--green);font-weight:600}.tab .num{font-size:10px;padding:1px 5px;background:#f0f3f4;border-radius:4px;color:#67736d}.tab[aria-pressed=true] .num{background:var(--green-soft);color:var(--green)}.toolbar{display:flex;gap:8px;padding:15px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}.search{position:relative;flex:1;min-width:140px}.search .icon{position:absolute;left:10px;top:10px;width:15px;height:15px;color:#8c969e}.search input{width:100%;padding:8px 10px 8px 32px;border:1px solid var(--line);border-radius:6px;font-size:12px;height:35px;background:#fcfdfd}.select{border:1px solid var(--line);border-radius:6px;background:white;font-size:11px;padding:7px 7px;max-width:160px}.tablewrap{overflow:auto;min-height:330px}table{border-collapse:collapse;width:100%;text-align:left;font-size:12px}th{font-size:10px;font-weight:500;color:#77838c;background:#fafbfc;padding:11px 16px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:10px 16px;border-bottom:1px solid #eff1f3;vertical-align:middle}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fbfdfc}.issue-title{font-size:12px;font-weight:550;text-align:left;background:none;border:0;padding:0;line-height:1.55;display:block}.issue-title:hover{color:var(--green)}.issue-meta{display:flex;gap:8px;color:#88939a;font-size:10px;margin-top:3px}.issue-meta code{font-family:var(--mono);font-size:10px}.priority{font-family:var(--mono);font-size:10px;border:0;border-radius:4px;padding:4px;background:var(--orange-soft);color:var(--orange);max-width:54px}.priority.p2{background:#f3f2ec;color:#827138}.priority.p3{background:#edf1f5;color:#697c8c}.status-select{border:0;background:transparent;font-size:11px;color:#687480;max-width:110px;padding:3px 0}.evidence-link{display:flex;align-items:center;gap:5px;border:0;background:none;color:var(--green);font-size:11px;padding:4px 0;white-space:nowrap}.evidence-link .icon{width:13px;height:13px}.pagination{padding:12px 20px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);gap:10px;font-size:11px;color:var(--muted);flex-wrap:wrap}.pages{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.page{height:28px;min-width:28px;border:1px solid var(--line);background:white;border-radius:5px;font-size:11px;padding:0 7px}.page[aria-current=page]{background:var(--green-soft);border-color:#c9e2d4;color:var(--green)}.aside{display:grid;gap:16px}.aside .panel{padding:18px}.aside h2{font-size:13px}.aside-label{font-size:10px;color:#86918a;letter-spacing:1px;font-weight:600;margin-bottom:12px}.coverage{display:flex;gap:3px;margin:18px 0 15px;height:7px}.coverage span{background:#43846b;border-radius:2px}.coverage span:last-child{background:#e2e6e9}.legend-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:10px}.legend-row .dot{border-radius:2px;background:#43846b}.legend-row.skip .dot{background:#bfc7cd}.limitation{background:#fcf8ef;border-radius:6px;padding:11px;font-size:11px;line-height:1.65;color:#856536;margin-top:17px}.aside-divider{height:1px;background:var(--line);margin:17px 0}.kv{display:flex;justify-content:space-between;gap:8px;font-size:11px;margin-top:11px;color:var(--muted)}.kv strong{font-weight:500;color:#45554d;text-align:right}.activity-item{display:flex;align-items:flex-start;gap:10px;font-size:11px;margin-top:17px}.activity-item .activity-icon{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#f0f4f1;color:#6b8676;flex-shrink:0}.activity-item .icon{width:12px}.activity-item small{color:#89938f;font-size:10px;display:block;margin-top:3px}.footer{display:flex;justify-content:space-between;gap:10px;margin-top:19px;font-size:10px;color:#89938f}.table-note{padding:10px 20px;background:#fafbf9;color:#69776c;font-size:11px;border-bottom:1px solid var(--line)}.empty{padding:72px 25px;text-align:center;color:var(--muted)}.empty h3{color:var(--ink);margin-bottom:6px}.logs{padding:8px 0;background:#172522;color:#d4e1da;min-height:330px;font:11px/1.7 var(--mono)}.log-line{display:grid;grid-template-columns:35px 68px 44px 1fr;gap:11px;padding:11px 18px;border-bottom:1px solid #ffffff08;word-break:break-word}.log-line .seq{color:#82978c}.log-line .info{color:#8dc7ab}.log-line .warn{color:#e0b56a}.log-line .error{color:#e9a29d}.full{grid-template-columns:1fr}.full .aside,.full .context-toggle{display:none}.reports td{padding:19px 20px}.policy-grid{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:25px}.policy-grid h3{margin-bottom:12px}.policy-grid p{font-size:12px;color:var(--muted);margin-bottom:12px}.policy-grid .kv{border-bottom:1px solid var(--line);padding-bottom:12px}.notice{padding:12px 16px;border:1px solid #e9dfc9;background:#fffbf2;color:#806337;border-radius:7px;font-size:12px;margin-top:20px}.mobile-menu{display:none}dialog{border:0;box-shadow:0 15px 80px #142a2629;color:var(--ink);padding:0;background:white}dialog::backdrop{background:#16282059;backdrop-filter:blur(2px)}.drawer{height:100dvh;max-height:100dvh;width:590px;max-width:100vw;margin:0 0 0 auto;border-radius:14px 0 0 14px}.dialoghead{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:white;z-index:1}.dialogbody{padding:24px}.dialogbody h2{font-size:23px;line-height:1.35;margin:10px 0 8px}.dialogbody h3{margin:24px 0 8px;font-size:12px}.dialogbody p,.dialogbody li{font-size:12px;color:#65716c;line-height:1.8}.dialogbody ol{padding-left:20px}.detail-meta{display:flex;flex-wrap:wrap;gap:16px;padding:17px 0;border-bottom:1px solid var(--line)}.detail-meta label{font-size:10px;color:var(--muted);display:grid;gap:5px}.detail-meta select{font-size:12px;padding:6px;border:1px solid var(--line);border-radius:5px}.detail-facts{background:#f6f8f7;border:1px solid var(--line);border-radius:8px;padding:14px;font-size:12px;margin-top:20px}.detail-facts code{font-size:11px;overflow-wrap:anywhere}.proofcard{display:flex;width:100%;align-items:center;justify-content:space-between;border:1px solid var(--line);background:white;border-radius:7px;padding:13px;margin-top:8px;text-align:left}.proofcard:hover{border-color:#8fb4a1}.proofcard span{font-size:12px}.proofcard small{display:block;font-size:10px;color:var(--muted);margin-top:2px}.modal{width:660px;max-width:calc(100vw - 28px);max-height:85vh;border-radius:12px}.codeblock{background:#182923;color:#d2e2d7;font:12px/1.8 var(--mono);padding:18px;border-radius:7px;white-space:pre-wrap;overflow-wrap:anywhere}.formfield{display:grid;gap:6px;font-size:12px;margin:14px 0}.formfield input,.formfield textarea{padding:10px;border:1px solid #dce3df;border-radius:6px;width:100%}.formfield textarea{min-height:100px;resize:vertical}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#203d30;color:white;padding:12px 20px;border-radius:8px;font-size:12px;box-shadow:0 8px 35px #18382e25;z-index:10;max-width:90vw}.toast:empty{display:none}.history-note{margin:0 0 18px;color:var(--green);font-size:11px}.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+            .activity-disclosure summary{display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:12px;font-weight:600;list-style:none}.activity-disclosure summary::-webkit-details-marker{display:none}.activity-disclosure summary:after{content:'+';margin-left:10px;color:var(--muted)}.activity-disclosure[open] summary:after{content:'−'}.activity-disclosure summary span{margin-left:auto;font-weight:400;font-size:10px}.context-toggle span{font-weight:400;color:var(--muted);font-size:11px}.sr:focus{position:fixed;top:8px;left:8px;width:auto;height:auto;clip:auto;padding:10px 18px;z-index:20;background:white;border:2px solid var(--green);border-radius:5px}
+      @media(max-width:760px){.context-toggle{display:flex;justify-content:space-between;white-space:normal;text-align:left;padding:14px}.aside{display:none}.aside.revealed{display:grid}.tablewrap .issues-table{min-width:0}.issues-table thead{display:none}.issues-table tbody{display:block}.issues-table tr{display:grid;grid-template-columns:auto 1fr auto;gap:10px 14px;padding:15px;border-bottom:1px solid var(--line)}.issues-table td{display:block;padding:0;border:0}.issues-table td:first-child{grid-column:1/-1}.issues-table td[data-label]{display:flex;align-items:center;gap:5px}.issues-table td[data-label]:before{content:attr(data-label);font-size:10px;color:var(--muted)}.issues-table .issue-title{font-size:13px}.issues-table .proof-cell{justify-self:end}.issues-table .status-select{max-width:100px}.issues-table .evidence-link{font-size:11px}.issue-meta{font-size:11px}.issues-table .priority{font-size:11px}.context-toggle[aria-expanded=true]{border-color:#9abbab}}
+      @media(pointer:coarse){.btn,.page,.tab{min-height:44px}.issue-title{min-height:32px}.priority,.status-select{min-height:36px}}
+      @media(min-width:1500px){.main{padding-top:38px}.workgrid{grid-template-columns:minmax(0,1fr) 290px}td{padding-top:16px;padding-bottom:16px}}
+            @media(max-width:1220px){.app{grid-template-columns:190px 1fr}.main{padding:24px}.topbar{padding:0 24px}.workgrid{grid-template-columns:minmax(0,1fr) 225px;gap:14px}.tabs{gap:15px}.toolbar{padding:14px}.metric{padding:15px}.tablewrap table{min-width:560px}.heading h1{font-size:24px}.aside .panel{padding:15px}}
+            @media(max-width:1050px){.workgrid{grid-template-columns:1fr}.aside{grid-template-columns:1fr 1fr}.tablewrap table{min-width:540px}.metric-foot{font-size:10px}.topnote .optional{display:none}.main{padding:22px}.metrics{gap:10px}.sidebar{padding-left:10px;padding-right:10px}}
+            @media(max-width:760px){.app{display:block}.sidebar{display:none;position:fixed;left:0;top:0;z-index:5;width:218px;box-shadow:10px 0 50px #0002}.sidebar.open{display:flex}.mobile-menu{display:inline-flex}.topbar{padding:0 16px;height:56px}.main{padding:22px 16px}.heading{align-items:flex-start;flex-wrap:wrap;gap:14px}.heading h1{font-size:25px}.heading .title-icon{display:none}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-value{font-size:27px}.metric-foot{font-size:11px}.scan-banner{align-items:flex-start;flex-wrap:wrap;padding:13px}.scan-banner .row{align-items:flex-start}.scan-banner .btn{margin-left:43px}.topnote{font-size:10px}.tabs{gap:18px;padding:0 14px}.panel-head{padding:16px 14px}.pagination{padding:12px 14px}.aside{grid-template-columns:1fr 1fr}.footer{flex-wrap:wrap}.policy-grid{grid-template-columns:1fr}.dialogbody{padding:20px}.log-line{grid-template-columns:26px 56px 36px 1fr;gap:5px;padding:11px 10px;font-size:10px}}
+            @media(max-width:440px){.aside{grid-template-columns:1fr}.crumb{font-size:11px}.topnote .dot{display:none}.toolbar .select{flex:1;max-width:none}.panel-head .badge{display:none}.heading p{font-size:11px}.metric{padding:13px}.scan-title{font-size:11px}.scan-banner p{font-size:10px}.footer span:last-child{display:none}.pagination{gap:12px}.pagination>.row{flex-wrap:wrap}.drawer{border-radius:0}.dialoghead{padding:16px 20px}}
+            @media(prefers-reduced-motion:no-preference){button{transition:background .15s,color .15s,border-color .15s}dialog[open]{animation:appear .18s ease-out}@keyframes appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+          @media(min-width:1060px){.main{padding-top:20px}.heading{margin-bottom:16px}.metrics{margin-bottom:16px}.metric{padding:10px 18px}.metric-value{font-size:28px;margin:3px 0}.scan-banner{padding:11px 16px;margin-bottom:16px}.panel-head{padding:12px 18px}.tabs{gap:20px}.tab{padding-bottom:10px}.toolbar{padding:11px 18px}.aside .panel{padding:15px}.aside-divider{margin:13px 0}.kv{margin-top:9px}.limitation{margin-top:12px;padding:9px}.tablewrap{min-height:325px}.pagination{padding:10px 18px}}
+    </style>
+  </head>
+  <body>
+    <a href="#main" class="sr">Skip to workspace</a>
+    <div class="app">
+      <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
+        <div class="brand row">
+          <span class="brandmark" data-icon="pulse"></span>webops<span
+            class="badge"
+            style="font-size: 9px; margin-left: 0"
+            >BETA</span
+          >
+        </div>
+        <div class="workspace">
+          <div class="avatar">AC</div>
+          <div>
+            <strong style="font-size: 12px">Acme workspace</strong>
+            <div class="muted" style="font-size: 10px">Developer team</div>
+          </div>
+        </div>
+        <div class="nav-label">WORKSPACE</div>
+        <nav class="nav" aria-label="Project">
+          <button data-nav="overview" class="active">
+            <span data-icon="grid"></span>Overview</button
+          ><button data-nav="issues">
+            <span data-icon="issue"></span>Issues
+            <span class="count" id="navCount">12</span></button
+          ><button data-nav="logs">
+            <span data-icon="terminal"></span>Scan activity</button
+          ><button data-nav="reports">
+            <span data-icon="history"></span>Reports
+          </button>
+        </nav>
+        <div class="nav-label">MANAGE</div>
+        <nav class="nav" aria-label="Manage">
+          <button data-nav="policy">
+            <span data-icon="sliders"></span>Scan policy</button
+          ><button id="designNotes">
+            <span data-icon="book"></span>Design notes
+          </button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="safe-note">
+            <div class="row small">
+              <span data-icon="shield"></span><strong>Bounded by design</strong>
+            </div>
+            <p>Approved origins only.<br />Every issue starts with proof.</p>
+          </div>
+          <div class="profile row">
+            <div class="avatar" style="border-radius: 50%; background: #e9e5dc">
+              CS
+            </div>
+            <div>
+              <strong style="font-size: 12px">Charan Sriteja</strong>
+              <div class="muted" style="font-size: 10px">Project owner</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <div>
+        <header class="topbar">
+          <div class="row">
+            <button
+              class="btn ghost icononly mobile-menu"
+              id="menu"
+              aria-label="Toggle navigation"
+              aria-expanded="false"
+            >
+              <span data-icon="menu"></span>
+            </button>
+            <div class="crumb">
+              Workspace<span>/</span
+              ><strong style="font-weight: 500; color: #53645c"
+                >Acme website</strong
+              >
+            </div>
+          </div>
+          <div class="topnote">
+            <span class="dot" style="color: #6e9781"></span>Interactive
+            prototype<span class="optional"> · Sample data</span>
+          </div>
+        </header>
+        <main class="main" id="main">
+          <div class="heading">
+            <div class="row" style="gap: 13px">
+              <div class="title-icon" data-icon="globe"></div>
+              <div>
+                <h1 id="pageTitle">Project overview</h1>
+                <p id="pageSubtitle">
+                  acme.example
+                  <span style="margin: 0 6px; color: #bbc5bf">/</span> Your
+                  website, from a developer’s perspective.
+                </p>
+              </div>
+            </div>
+            <div class="row">
+              <button class="btn" id="policyButton">
+                <span data-icon="sliders"></span>Scan policy</button
+              ><button class="btn primary" id="startScan">
+                <span data-icon="play"></span>Run scan
+              </button>
+            </div>
+          </div>
+          <section class="metrics" aria-label="Project summary">
+            <div class="metric">
+              <div class="metric-label">
+                Open issues<span data-icon="issue"></span>
+              </div>
+              <div class="metric-value" id="openMetric">12</div>
+              <div class="metric-foot">
+                Across <span id="affectedCount">8</span> affected pages
+              </div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">
+                Needs attention<span data-icon="flag"></span>
+              </div>
+              <div class="metric-value" id="urgentMetric">
+                3<small>P1</small>
+              </div>
+              <div class="metric-foot">Prioritize broken flows first</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">
+                Pages checked<span data-icon="layers"></span>
+              </div>
+              <div class="metric-value">24<small>/ 25 budget</small></div>
+              <div class="metric-foot">
+                <strong>Desktop + mobile</strong> viewports
+              </div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">
+                Latest scan<span data-icon="clock"></span>
+              </div>
+              <div class="metric-value">2m 34s</div>
+              <div class="metric-foot">
+                Today, 10:42 AM
+                <span style="margin-left: 6px; color: var(--green)"
+                  >✓ Completed</span
+                >
+              </div>
+            </div>
+          </section>
+          <section class="scan-banner" aria-label="Latest scan status">
+            <div class="row" style="gap: 12px">
+              <span class="scan-mark" id="scanIcon" data-icon="check"></span>
+              <div>
+                <div class="scan-title" id="scanTitle">
+                  Scan #104 completed. Your next fixes are ready.
+                </div>
+                <p id="scanSubtitle">
+                  24 pages checked · 6 URLs skipped by policy · No navigation
+                  failures
+                </p>
+              </div>
+            </div>
+            <button class="btn" id="reportButton">
+              View report<span data-icon="arrow"></span>
+            </button>
+          </section>
+          <div class="workgrid" id="workgrid">
+            <section class="panel" aria-label="Project data">
+              <div class="panel-head">
+                <div>
+                  <h2 id="panelTitle">Your triage queue</h2>
+                  <p id="panelSubtitle">
+                    Start with the highest-impact issues. Inspect the proof,
+                    then take action.
+                  </p>
+                </div>
+                <span class="badge green" id="verifiedBadge"
+                  ><span data-icon="shield" style="display: flex"></span>Proof
+                  attached</span
+                >
+              </div>
+              <nav class="tabs" aria-label="Scan datasets" id="tabs">
+                <button class="tab" data-tab="issues" aria-pressed="true">
+                  Issues <span class="num">12</span></button
+                ><button class="tab" data-tab="pages" aria-pressed="false">
+                  Pages <span class="num">24</span></button
+                ><button class="tab" data-tab="skipped" aria-pressed="false">
+                  Skipped URLs <span class="num">6</span></button
+                ><button class="tab" data-tab="logs" aria-pressed="false">
+                  Event log <span class="num" id="eventCount">48</span>
+                </button>
+              </nav>
+              <div class="toolbar" id="toolbar">
+                <label class="search"
+                  ><span class="sr">Search current dataset</span
+                  ><span data-icon="search"></span
+                  ><input
+                    id="search"
+                    type="search"
+                    placeholder="Search issues or URL…" /></label
+                ><select
+                  class="select"
+                  id="filter"
+                  aria-label="Filter current dataset"
+                ></select
+                ><select
+                  class="select"
+                  id="sort"
+                  aria-label="Sort current dataset"
+                ></select>
+              </div>
+              <div id="dataset" aria-live="polite"></div>
+              <div class="pagination" id="pagination"></div>
+            </section>
+            <button
+              class="context-toggle btn"
+              id="contextToggle"
+              aria-expanded="false"
+              aria-controls="scanContext"
+            >
+              Scan coverage &amp; context <span>24 checked · 6 skipped</span>
+            </button>
+            <aside class="aside" id="scanContext">
+              <section class="panel">
+                <div class="row between">
+                  <h2>Scan coverage</h2>
+                  <span class="badge green">Completed</span>
+                </div>
+                <p class="small muted" style="font-size: 11px; margin-top: 6px">
+                  Discovered URLs · Scan #104
+                </p>
+                <div
+                  class="coverage"
+                  aria-label="24 checked URLs and 6 skipped URLs"
+                >
+                  <span style="width: 80%"></span
+                  ><span style="width: 20%"></span>
+                </div>
+                <div class="legend-row">
+                  <span class="row"><span class="dot"></span>Pages checked</span
+                  ><strong>24</strong>
+                </div>
+                <div class="legend-row skip">
+                  <button
+                    class="textbtn row"
+                    id="skipShortcut"
+                    style="font-weight: 400; color: var(--muted)"
+                  >
+                    <span class="dot"></span>Skipped by policy</button
+                  ><strong>6</strong>
+                </div>
+                <div class="limitation">
+                  Some URLs were excluded. Results apply to the 24 checked
+                  pages.
+                </div>
+                <div class="aside-divider"></div>
+                <div class="aside-label">SCAN CONTEXT</div>
+                <div class="kv">
+                  <span>Approved origins</span><strong>1</strong>
+                </div>
+                <div class="kv">
+                  <span>Page budget</span><strong>25 pages</strong>
+                </div>
+                <div class="kv">
+                  <span>Viewports</span><strong>Desktop, mobile</strong>
+                </div>
+                <div class="kv">
+                  <span>Form submission</span><strong>Disabled</strong>
+                </div>
+                <button
+                  class="textbtn"
+                  id="policyShortcut"
+                  style="margin-top: 18px"
+                >
+                  Review scan policy →
+                </button>
+              </section>
+              <details class="panel activity-disclosure">
+                <summary>
+                  Recent activity <span class="muted">3 events</span>
+                </summary>
+                <div class="activity-item">
+                  <span class="activity-icon" data-icon="check"></span>
+                  <div>Scan #104 completed<small>Today, 10:42 AM</small></div>
+                </div>
+                <div class="activity-item">
+                  <span class="activity-icon" data-icon="file"></span>
+                  <div>
+                    Report snapshot saved<small
+                      >12 issues · Immutable history</small
+                    >
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <span class="activity-icon" data-icon="shield"></span>
+                  <div>
+                    All findings have proof<small
+                      >Ready for developer review</small
+                    >
+                  </div>
+                </div>
+                <button
+                  class="textbtn"
+                  id="logsShortcut"
+                  style="margin-top: 20px"
+                >
+                  Open event log →
+                </button>
+              </details>
+            </aside>
+          </div>
+          <footer class="footer">
+            <span
+              ><span style="color: var(--green)">●</span> Local design prototype
+              · No real scans are run</span
+            ><span>Deterministic checks. Verifiable findings.</span>
+          </footer>
+        </main>
+      </div>
+    </div>
+    <dialog
+      class="drawer"
+      id="issueDialog"
+      aria-labelledby="issueHeading"
+    ></dialog>
+    <dialog
+      class="modal"
+      id="proofDialog"
+      aria-labelledby="proofHeading"
+    ></dialog>
+    <dialog
+      class="modal"
+      id="generalDialog"
+      aria-labelledby="generalHeading"
+    ></dialog>
+    <div class="toast" id="toast" role="status"></div>
+    <script>
+      'use strict';
+      const $ = (s) => document.querySelector(s);
+      const icons = {
+        pulse: 'M2 12h4l3-8 5 16 3-8h5',
+        grid: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
+        issue: 'M12 8v5 M12 17h.01 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
+        terminal: 'm5 7 5 5-5 5 M13 17h6',
+        history: 'M3 11a9 9 0 1 1 2 7 M3 4v7h7 M12 7v5l3 2',
+        sliders: 'M4 7h9 M17 7h3 M4 17h3 M11 17h9 M13 4v6 M7 14v6',
+        book: 'M12 5v15 M12 5Q7 2 3 4v15q5-2 9 1 4-3 9-1V4q-5-2-9 1',
+        shield: 'm12 3 8 3v6q-1 6-8 9-7-3-8-9V6z m-4 9 3 3 5-6',
+        globe:
+          'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M3 12h18 M12 3q-8 9 0 18 8-9 0-18',
+        play: 'm8 4 12 8-12 8z',
+        flag: 'M5 21V3 M5 4h14l-3 4 3 4H5',
+        layers: 'm12 3 10 5-10 5L2 8z M2 12l10 5 10-5 M2 16l10 5 10-5',
+        clock: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M12 7v5l3 2',
+        check: 'm5 12 4 4L19 6',
+        arrow: 'M4 12h15 m-5-5 5 5-5 5',
+        search: 'M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0 m-2 5 6 6',
+        file: 'M6 3h8l4 4v14H6z M14 3v5h4 M9 12h6 M9 16h6',
+        link: 'm10 14 4-4 M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0 M16 8l1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0',
+        close: 'm6 6 12 12 M6 18 18 6',
+        download: 'M12 3v12 m-5-5 5 5 5-5 M4 17v4h16v-4',
+        menu: 'M4 6h16 M4 12h16 M4 18h16',
+      };
+      function icon(name) {
+        return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name] || icons.file}"/></svg>`;
+      }
+      function hydrate() {
+        document.querySelectorAll('[data-icon]').forEach((el) => {
+          el.innerHTML = icon(el.dataset.icon);
+          el.removeAttribute('data-icon');
+        });
+      }
+      hydrate();
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;',
+            })[c],
+        );
+      const base = [
+        [
+          'Broken link to getting started',
+          '/docs',
+          'P1',
+          'BROKEN_INTERNAL_LINK',
+          'URL result',
+          'The visible “Getting started” link resolves to /docs/quickstart, which returns HTTP 404.',
+          'Developers cannot reach the onboarding guide.',
+          'Update the link target or restore the missing quickstart page.',
+        ],
+        [
+          'Uncaught error on the pricing page',
+          '/pricing',
+          'P1',
+          'JS_CONSOLE_ERROR',
+          'Console',
+          'TypeError: Cannot read properties of undefined (reading “price”) at pricing.js:84:12.',
+          'The pricing component may not render reliably.',
+          'Guard the price lookup and handle missing plan data before rendering.',
+        ],
+        [
+          'Contact page returns a server error',
+          '/contact',
+          'P1',
+          'HTTP_PAGE_ERROR',
+          'URL result',
+          'GET /contact returned HTTP 500 at 10:41:22 IST. Final URL: https://acme.example/contact.',
+          'Visitors cannot access the contact page.',
+          'Inspect the server error logs and restore a successful response.',
+        ],
+        [
+          'Hero image is missing alternative text',
+          '/',
+          'P2',
+          'MISSING_IMAGE_ALT',
+          'DOM excerpt',
+          'img.hero-illustration has no alt attribute. The image is not marked decorative.',
+          'Screen reader users miss the information conveyed by this image.',
+          'Add concise alternative text describing the informative content.',
+        ],
+        [
+          'Email input has no accessible name',
+          '/newsletter',
+          'P2',
+          'UNLABELED_FORM_CONTROL',
+          'DOM excerpt',
+          'input#email has no associated label, aria-label, or aria-labelledby.',
+          'Screen reader users cannot identify the purpose of this control.',
+          'Add a visible label associated with the email input.',
+        ],
+        [
+          'Content overflows on mobile',
+          '/pricing',
+          'P2',
+          'HORIZONTAL_OVERFLOW',
+          'Viewport result',
+          'Document width is 428px at a 375px viewport: 53px of horizontal overflow.',
+          'Mobile visitors must scroll horizontally to read pricing content.',
+          'Allow the pricing grid to wrap and remove fixed minimum widths.',
+        ],
+        [
+          'Search API returns a server error',
+          '/docs/search',
+          'P2',
+          'FAILED_FIRST_PARTY_REQUEST',
+          'Network',
+          'GET https://acme.example/api/search returned HTTP 503.',
+          'Documentation search may not return results.',
+          'Inspect the search service and handle temporary failures gracefully.',
+        ],
+        [
+          'Feature image has no alternative text',
+          '/features',
+          'P2',
+          'MISSING_IMAGE_ALT',
+          'DOM excerpt',
+          'img.feature-preview has no alt attribute and is not marked decorative.',
+          'Screen reader users miss feature information.',
+          'Add contextual alternative text to the feature preview.',
+        ],
+        [
+          'Search field has no accessible name',
+          '/docs',
+          'P2',
+          'UNLABELED_FORM_CONTROL',
+          'DOM excerpt',
+          'input#search has no associated accessible name.',
+          'Assistive technology cannot identify the search field.',
+          'Associate a visible label with the search input.',
+        ],
+        [
+          'About page has an empty title',
+          '/about',
+          'P3',
+          'MISSING_PAGE_TITLE',
+          'DOM excerpt',
+          'The document contains an empty <title> element.',
+          'Browser tabs and search results lack a meaningful page label.',
+          'Set a descriptive title specific to the about page.',
+        ],
+        [
+          'Documentation page has no title',
+          '/docs/search',
+          'P3',
+          'MISSING_PAGE_TITLE',
+          'DOM excerpt',
+          'The document head contains no title element.',
+          'Visitors cannot distinguish this page in their browser tabs.',
+          'Add a descriptive page title to the document head.',
+        ],
+        [
+          'Footer image has no alternative text',
+          '/about',
+          'P2',
+          'MISSING_IMAGE_ALT',
+          'DOM excerpt',
+          'img.partner-logo has no alt attribute and is not marked decorative.',
+          'Screen reader users cannot identify the partner logo.',
+          'Set alternative text to the partner name.',
+        ],
+      ];
+      const initial = base.map((x, i) => ({
+        id: 201 + i,
+        title: x[0],
+        url: x[1],
+        priority: x[2],
+        rule: x[3],
+        proof: x[4],
+        observation: x[5],
+        impact: x[6],
+        fix: x[7],
+        status: 'open',
+        description: x[6],
+        version: 1,
+      }));
+      let issues = initial.map((i) => ({ ...i }));
+      let revisions = [];
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem('webops-design-v1') || 'null',
+        );
+        if (saved && Array.isArray(saved.issues)) {
+          issues = initial.map((i) => {
+            const x = saved.issues.find((x) => x.id === i.id);
+            return x
+              ? {
+                  ...i,
+                  title: String(x.title || i.title),
+                  description: String(x.description || i.description),
+                  priority: ['P0', 'P1', 'P2', 'P3'].includes(x.priority)
+                    ? x.priority
+                    : i.priority,
+                  status: [
+                    'open',
+                    'in_progress',
+                    'resolved',
+                    'wont_fix',
+                  ].includes(x.status)
+                    ? x.status
+                    : 'open',
+                  version: Number(x.version) || 1,
+                }
+              : i;
+          });
+          revisions = saved.revisions || [];
+        }
+      } catch {}
+      function persist() {
+        try {
+          localStorage.setItem(
+            'webops-design-v1',
+            JSON.stringify({ issues, revisions }),
+          );
+        } catch {
+          toast(
+            'Changes saved for this session; browser storage is unavailable.',
+          );
+        }
+      }
+      const pages = [
+        '/',
+        '/docs',
+        '/pricing',
+        '/contact',
+        '/newsletter',
+        '/features',
+        '/docs/search',
+        '/about',
+        '/blog',
+        '/blog/release-notes',
+        '/blog/accessibility',
+        '/blog/design',
+        '/changelog',
+        '/docs/install',
+        '/docs/configuration',
+        '/docs/api',
+        '/docs/security',
+        '/docs/teams',
+        '/docs/deploy',
+        '/legal',
+        '/privacy',
+        '/terms',
+        '/customers',
+        '/status',
+      ].map((url, i) => ({
+        url,
+        status: url === '/contact' ? 500 : 200,
+        depth: i < 8 ? 1 : 2,
+        time: 320 + i * 31,
+      }));
+      const skipped = [
+        ['/admin', 'Disallowed by robots.txt'],
+        ['/account', 'Login required'],
+        ['https://status.example', 'Unapproved origin'],
+        ['/private', 'Disallowed by robots.txt'],
+        ['/login', 'Authentication boundary'],
+        ['https://cdn.example', 'Unapproved origin'],
+      ].map(([url, reason]) => ({ url, reason }));
+      let logs = Array.from({ length: 48 }, (_, i) => ({
+        seq: i + 1,
+        time: `10:${String(40 + Math.floor((i * 3) / 60)).padStart(2, '0')}:${String((i * 3) % 60).padStart(2, '0')}`,
+        level: i % 13 === 0 ? 'warn' : 'info',
+        message:
+          i === 0
+            ? 'Policy validated · 1 approved origin'
+            : i === 47
+              ? 'Scan #104 completed · immutable report committed'
+              : i % 13 === 0
+                ? 'URL skipped · policy boundary respected'
+                : i % 3 === 0
+                  ? `Evidence persisted · EV-${201 + i}`
+                  : i % 2 === 0
+                    ? `Checks complete · ${pages[i % 24].url}`
+                    : `Visited ${pages[i % 24].url} · desktop + mobile`,
+      }));
+      const state = {
+        nav: 'overview',
+        tab: 'issues',
+        page: 1,
+        size: window.innerWidth < 761 ? 3 : 6,
+        search: '',
+        filter: 'all',
+        sort: 'priority',
+      };
+      let selected = null;
+      let timer = null;
+      let runCount = 0;
+      let toastTimer;
+      function toast(t) {
+        $('#toast').textContent = t;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => ($('#toast').textContent = ''), 3500);
+      }
+      const labels = {
+        open: 'Open',
+        in_progress: 'In progress',
+        resolved: 'Resolved',
+        wont_fix: 'Won’t fix',
+      };
+      function options(vals, value) {
+        return vals
+          .map(
+            ([v, l]) =>
+              `<option value="${esc(v)}" ${v === value ? 'selected' : ''}>${esc(l)}</option>`,
+          )
+          .join('');
+      }
+      function updateMetrics() {
+        const open = issues.filter(
+          (i) => !['resolved', 'wont_fix'].includes(i.status),
+        );
+        $('#openMetric').textContent = open.length;
+        $('#navCount').textContent = open.length;
+        $('#urgentMetric').innerHTML =
+          open.filter((i) => ['P0', 'P1'].includes(i.priority)).length +
+          '<small>P0 / P1</small>';
+        $('#affectedCount').textContent = new Set(open.map((i) => i.url)).size;
+      }
+      function setView(nav, tab) {
+        state.nav = nav;
+        state.tab =
+          tab || (['overview', 'issues'].includes(nav) ? 'issues' : nav);
+        state.page = 1;
+        state.search = '';
+        state.filter = 'all';
+        state.sort = state.tab === 'issues' ? 'priority' : 'default';
+        $('#search').value = '';
+        $('#sidebar').classList.remove('open');
+        $('#menu').setAttribute('aria-expanded', 'false');
+        render();
+      }
+      function render() {
+        updateMetrics();
+        document.querySelectorAll('[data-nav]').forEach((b) => {
+          b.classList.toggle('active', b.dataset.nav === state.nav);
+          if (b.dataset.nav === state.nav)
+            b.setAttribute('aria-current', 'page');
+          else b.removeAttribute('aria-current');
+        });
+        const names = {
+          overview: 'Project overview',
+          issues: 'Issues',
+          logs: 'Scan activity',
+          reports: 'Report history',
+          policy: 'Scan policy',
+        };
+        $('#pageTitle').textContent = names[state.nav];
+        $('#workgrid').classList.toggle('full', state.nav !== 'overview');
+        document
+          .querySelectorAll('[data-tab]')
+          .forEach((b) =>
+            b.setAttribute('aria-pressed', String(b.dataset.tab === state.tab)),
+          );
+        const isSpecial = ['reports', 'policy'].includes(state.tab);
+        $('#tabs').hidden = isSpecial;
+        $('#toolbar').hidden = isSpecial;
+        $('#verifiedBadge').hidden = state.tab !== 'issues';
+        $('#pagination').hidden = state.tab === 'policy';
+        const headings = {
+          issues: [
+            'Your triage queue',
+            'Start with the highest-impact issues. Inspect the proof, then take action.',
+          ],
+          pages: ['Pages checked', 'Recorded page results for scan #104.'],
+          skipped: [
+            'Skipped URLs',
+            'Excluded URLs explain the limits of this scan’s coverage.',
+          ],
+          logs: [
+            'Event log',
+            timer
+              ? 'Demo scan #105 is running · simulated events'
+              : 'Scan #104 · Ordered event history',
+          ],
+          reports: [
+            'Scan reports',
+            'Historical snapshots stay unchanged when you edit the current board.',
+          ],
+          policy: [
+            'Approved scope',
+            'Read-only policy preview for this sample project.',
+          ],
+        };
+        $('#panelTitle').textContent = headings[state.tab][0];
+        $('#panelSubtitle').textContent = headings[state.tab][1];
+        $('#search').placeholder =
+          state.tab === 'issues'
+            ? 'Search issues or URL…'
+            : state.tab === 'logs'
+              ? 'Search event messages…'
+              : 'Search URLs…';
+        let filters =
+          state.tab === 'issues'
+            ? [['all', 'All statuses'], ...Object.entries(labels)]
+            : state.tab === 'logs'
+              ? [
+                  ['all', 'All levels'],
+                  ['info', 'Info'],
+                  ['warn', 'Warnings'],
+                  ['error', 'Errors'],
+                ]
+              : state.tab === 'pages'
+                ? [
+                    ['all', 'All responses'],
+                    ['200', '200 · OK'],
+                    ['500', '500 · Server error'],
+                  ]
+                : [
+                    ['all', 'All reasons'],
+                    ...Array.from(new Set(skipped.map((s) => s.reason))).map(
+                      (x) => [x, x],
+                    ),
+                  ];
+        $('#filter').innerHTML = options(filters, state.filter);
+        $('#sort').innerHTML = options(
+          state.tab === 'issues'
+            ? [
+                ['priority', 'Priority: highest first'],
+                ['title', 'Title: A–Z'],
+                ['recent', 'Recently edited'],
+              ]
+            : state.tab === 'logs'
+              ? [
+                  ['default', 'Oldest first'],
+                  ['newest', 'Newest first'],
+                ]
+              : [
+                  ['default', 'Default order'],
+                  ['url', 'URL: A–Z'],
+                ],
+          state.sort,
+        );
+        renderData();
+      }
+      function resultRows() {
+        let rows =
+          state.tab === 'issues'
+            ? issues
+            : state.tab === 'pages'
+              ? pages
+              : state.tab === 'skipped'
+                ? skipped
+                : logs;
+        rows = rows.filter((r) =>
+          JSON.stringify(r).toLowerCase().includes(state.search.toLowerCase()),
+        );
+        if (state.filter !== 'all')
+          rows = rows.filter(
+            (r) => String(r.status ?? r.reason ?? r.level) === state.filter,
+          );
+        rows = [...rows];
+        if (state.sort === 'priority')
+          rows.sort(
+            (a, b) => a.priority.localeCompare(b.priority) || a.id - b.id,
+          );
+        if (state.sort === 'title')
+          rows.sort((a, b) => a.title.localeCompare(b.title));
+        if (state.sort === 'recent') rows.sort((a, b) => b.version - a.version);
+        if (state.sort === 'url')
+          rows.sort((a, b) => a.url.localeCompare(b.url));
+        if (state.sort === 'newest') rows.reverse();
+        return rows;
+      }
+      function renderData() {
+        if (state.tab === 'policy') {
+          renderPolicy();
+          return;
+        }
+        if (state.tab === 'reports') {
+          renderReports();
+          return;
+        }
+        const rows = resultRows();
+        const totalPages = Math.max(1, Math.ceil(rows.length / state.size));
+        state.page = Math.min(state.page, totalPages);
+        const shown = rows.slice(
+          (state.page - 1) * state.size,
+          state.page * state.size,
+        );
+        let body = '';
+        if (!rows.length)
+          body =
+            '<div class="tablewrap"><div class="empty"><h3>No matching results</h3><p>Try another search or filter. This does not mean the site is defect-free.</p><button class="btn" onclick="clearFilters()" style="margin-top:15px">Clear filters</button></div></div>';
+        else if (state.tab === 'issues')
+          body = `<div class="tablewrap"><table class="issues-table"><thead><tr><th style="width:52%">Issue</th><th>Priority</th><th>Status</th><th>Evidence</th></tr></thead><tbody>${shown
+            .map(
+              (i) =>
+                `<tr><td><button class="issue-title" onclick="openIssue(${i.id})">${esc(i.title)}</button><div class="issue-meta"><span>WEB-${i.id}</span><span>·</span><code>${esc(i.url)}</code></div></td><td data-label="Priority"><select class="priority ${i.priority.toLowerCase()}" aria-label="Priority for WEB-${i.id}" onchange="editIssue(${i.id},'priority',this.value)">${options(
+                  ['P0', 'P1', 'P2', 'P3'].map((p) => [p, p]),
+                  i.priority,
+                )}</select></td><td data-label="Status"><select class="status-select" aria-label="Status for WEB-${i.id}" onchange="editIssue(${i.id},'status',this.value)">${options(Object.entries(labels), i.status)}</select></td><td class="proof-cell"><button class="evidence-link" onclick="openProof(${i.id})">${icon('link')}View proof</button></td></tr>`,
+            )
+            .join('')}</tbody></table></div>`;
+        else if (state.tab === 'pages')
+          body = `<div class="tablewrap"><table><thead><tr><th>Page URL</th><th>HTTP status</th><th>Depth</th><th>Load time</th><th></th></tr></thead><tbody>${shown.map((p) => `<tr><td class="mono">${esc(p.url)}</td><td><span class="badge ${p.status === 200 ? 'green' : 'red'}">${p.status}</span></td><td>${p.depth}</td><td class="mono">${p.time} ms</td><td><button class="textbtn" onclick="openPage('${p.url}')">Inspect →</button></td></tr>`).join('')}</tbody></table></div>`;
+        else if (state.tab === 'skipped')
+          body = `<div class="table-note">Skipped pages were not checked. These are coverage limitations, not reported defects.</div><div class="tablewrap"><table><thead><tr><th>Excluded URL</th><th>Skip reason</th><th>Result</th></tr></thead><tbody>${shown.map((p) => `<tr><td class="mono">${esc(p.url)}</td><td>${esc(p.reason)}</td><td><span class="badge">Not checked</span></td></tr>`).join('')}</tbody></table></div>`;
+        else
+          body = `<div class="table-note row between"><span>${timer ? 'Simulation running' : 'Stored sample events'} · Ordered by sequence</span><button class="textbtn" onclick="downloadLogs()">Download log ↓</button></div><div class="logs" aria-label="Scan events">${shown.map((l) => `<div class="log-line"><span class="seq">${String(l.seq).padStart(3, '0')}</span><span class="seq">${l.time}</span><span class="${l.level}">${l.level.toUpperCase()}</span><span>${esc(l.message)}</span></div>`).join('')}</div>`;
+        $('#dataset').innerHTML = body;
+        pagination(rows.length);
+        $('#eventCount').textContent = logs.length;
+      }
+      function pagination(total) {
+        const n = Math.max(1, Math.ceil(total / state.size));
+        $('#pagination').innerHTML =
+          `<span>${total ? (state.page - 1) * state.size + 1 : 0}–${Math.min(state.page * state.size, total)} of ${total} ${state.tab === 'logs' ? 'events' : state.tab === 'skipped' ? 'URLs' : state.tab}</span><div class="row"><label class="row" style="gap:6px">Rows <select class="select" aria-label="Rows per page" onchange="changeSize(this.value)" style="padding:3px">${options(
+            [
+              ['3', '3'],
+              ['6', '6'],
+              ['12', '12'],
+            ],
+            String(state.size),
+          )}</select></label><nav class="pages" aria-label="Pagination"><button class="page" aria-label="Previous page" ${state.page === 1 ? 'disabled' : ''} onclick="changePage(-1)">‹</button>${Array.from({ length: n }, (_, i) => `<button class="page" aria-label="Page ${i + 1}" ${state.page === i + 1 ? 'aria-current="page"' : ''} onclick="goPage(${i + 1})">${i + 1}</button>`).join('')}<button class="page" aria-label="Next page" ${state.page === n ? 'disabled' : ''} onclick="changePage(1)">›</button></nav></div>`;
+      }
+      function changePage(d) {
+        state.page += d;
+        renderData();
+      }
+      function goPage(p) {
+        state.page = p;
+        renderData();
+      }
+      function changeSize(n) {
+        state.size = Number(n);
+        state.page = 1;
+        renderData();
+      }
+      function clearFilters() {
+        state.search = '';
+        state.filter = 'all';
+        state.page = 1;
+        $('#search').value = '';
+        render();
+      }
+      function editIssue(id, key, value) {
+        const i = issues.find((i) => i.id === id);
+        if (i[key] === value) return;
+        revisions.push({
+          id,
+          key,
+          old: i[key],
+          value,
+          at: new Date().toISOString(),
+        });
+        i[key] = value;
+        i.version++;
+        persist();
+        render();
+        toast('Issue updated · Saved in this browser');
+      }
+      function head(title, dialog) {
+        return `<div class="dialoghead"><span class="small muted">${title}</span><button class="btn ghost icononly" aria-label="Close dialog" onclick="document.getElementById('${dialog}').close()">${icon('close')}</button></div>`;
+      }
+      function showDialog(el) {
+        if (!el.open) el.showModal();
+      }
+      function openIssue(id) {
+        selected = id;
+        const i = issues.find((i) => i.id === id);
+        $('#issueDialog').innerHTML =
+          head(
+            `WEB-${id} <span style="margin-left:10px">Issue details</span>`,
+            'issueDialog',
+          ) +
+          `<div class="dialogbody"><span class="badge green">Verified sample finding</span><h2 id="issueHeading">${esc(i.title)}</h2><p class="mono">https://acme.example${esc(i.url)}</p><div class="detail-meta"><label>PRIORITY<select onchange="editIssue(${id},'priority',this.value)">${options(
+            ['P0', 'P1', 'P2', 'P3'].map((x) => [x, x]),
+            i.priority,
+          )}</select></label><label>STATUS<select onchange="editIssue(${id},'status',this.value)">${options(Object.entries(labels), i.status)}</select></label><label>CONFIDENCE<strong>High · deterministic</strong></label><label>LAST SEEN<strong>3 Nov 2026 · 10:42 IST</strong></label></div><div class="detail-facts"><div class="small muted" style="margin-bottom:6px">EXACT OBSERVATION</div>${esc(i.observation)}<div style="margin-top:10px;color:var(--muted)"><code>${i.rule}</code> · v1.0</div></div><h3>Impact</h3><p>${esc(i.impact)}</p><h3>Reproduce</h3><ol><li>Open https://acme.example${esc(i.url)}.</li><li>${i.rule === 'HORIZONTAL_OVERFLOW' ? 'Set the viewport to 375 × 812.' : 'Use the desktop viewport, 1440 × 900.'}</li><li>${esc(i.observation)}</li></ol><h3>Suggested fix</h3><p>${esc(i.fix)}</p><h3>Evidence</h3><button class="proofcard" onclick="openProof(${id})"><span>${icon('file')} ${esc(i.proof)}<small>EV-${id} · Scan #104 · Sample proof</small></span>${icon('arrow')}</button><form id="editForm"><h3>Editable issue fields</h3><label class="formfield">Title<input name="title" required maxlength="180" value="${esc(i.title)}"></label><label class="formfield">Description<textarea name="description" required>${esc(i.description)}</textarea></label><div class="row between"><button class="btn primary" type="submit">Save changes</button><button class="btn" type="button" onclick="downloadIssue(${id})">${icon('download')}Download .md</button></div></form><h3>Observation timeline</h3><p>Scan #104 · 3 Nov 2026, 10:42 IST<br>Detected priority ${initial.find((x) => x.id === id).priority} · Evidence captured</p><h3>Revision history <span class="badge">${revisions.filter((r) => r.id === id).length}</span></h3><div id="revisionList">${
+            revisions
+              .filter((r) => r.id === id)
+              .slice(-4)
+              .reverse()
+              .map(
+                (r) =>
+                  `<p>${esc(r.key)}: ${esc(r.old)} → ${esc(r.value)}<br><span class="small muted">${new Date(r.at).toLocaleString()}</span></p>`,
+              )
+              .join('') || '<p>No edits yet.</p>'
+          }</div></div>`;
+        $('#editForm').onsubmit = (e) => {
+          e.preventDefault();
+          const f = new FormData(e.target);
+          if (
+            !String(f.get('title')).trim() ||
+            !String(f.get('description')).trim()
+          ) {
+            toast('Enter a title and description.');
+            return;
+          }
+          editIssue(id, 'title', String(f.get('title')).trim());
+          editIssue(id, 'description', String(f.get('description')).trim());
+          openIssue(id);
+          toast('Changes saved · Historical report unchanged');
+        };
+        showDialog($('#issueDialog'));
+      }
+      function proofContent(i) {
+        if (i.rule.includes('ALT'))
+          return `<img class="${i.id === 204 ? 'hero-illustration' : i.id === 208 ? 'feature-preview' : 'partner-logo'}" src="/assets/illustration.webp">`;
+        if (i.rule === 'UNLABELED_FORM_CONTROL')
+          return `<input id="${i.id === 205 ? 'email' : 'search'}" type="${i.id === 205 ? 'email' : 'search'}">`;
+        if (i.rule === 'MISSING_PAGE_TITLE')
+          return '<head>\n  <meta charset="utf-8">\n  <title></title>\n</head>';
+        return i.observation;
+      }
+      function openProof(id) {
+        const i = initial.find((i) => i.id === id);
+        $('#proofDialog').innerHTML =
+          head(`EV-${id} · Proof viewer`, 'proofDialog') +
+          `<div class="dialogbody"><span class="badge orange">Illustrative sample · Not captured from a live scan</span><h2 id="proofHeading">${esc(i.proof)}</h2><div class="kv"><span>Source</span><strong>https://acme.example${esc(i.url)}</strong></div><div class="kv"><span>Captured</span><strong>3 Nov 2026, 10:41:22 IST</strong></div><div class="kv"><span>Rule</span><strong class="mono">${i.rule}</strong></div><h3>Recorded observation</h3><pre class="codeblock">${esc(proofContent(i))}</pre><p style="margin-top:12px">${esc(i.observation)}</p>${['MISSING_IMAGE_ALT', 'UNLABELED_FORM_CONTROL', 'HORIZONTAL_OVERFLOW'].includes(i.rule) ? '<div class="notice"><strong>Screenshot proof unavailable in this prototype.</strong><br>The production viewer must show the persisted screenshot and bounding box; this sample is not publishable scan evidence.</div>' : ''}<div class="row" style="margin-top:22px"><button class="btn" onclick="document.getElementById('proofDialog').close();openIssue(${id})">Back to WEB-${id}</button><button class="btn ghost" onclick="document.getElementById('proofDialog').close();document.getElementById('issueDialog').close();setView('logs')">View scan events</button></div></div>`;
+        showDialog($('#proofDialog'));
+      }
+      function download(name, content, type) {
+        const u = URL.createObjectURL(new Blob([content], { type }));
+        const a = document.createElement('a');
+        a.href = u;
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(u), 1000);
+      }
+      function md(s) {
+        return String(s)
+          .replace(/[\\`*_{}\[\]<>#!|]/g, '\\$&')
+          .replace(/\r?\n/g, ' ');
+      }
+      function downloadIssue(id) {
+        const i = issues.find((i) => i.id === id);
+        download(
+          `web-${id}-issue.md`,
+          `# ${md(i.title)}\n\n> Design prototype — illustrative sample data, not a real audit.\n\nPriority: ${i.priority}  \nStatus: ${labels[i.status]}  \nAffected URL: https://acme.example${i.url}  \nScan: #104 · 2026-11-03 10:42 IST  \nObservation time: 2026-11-03 10:41:22 IST  \nRule: ${i.rule} v1.0  \nConfidence: high (deterministic sample)\n\n## Description\n${md(i.description)}\n\n## Exact observation\n${md(i.observation)}\n\n## Impact\n${md(i.impact)}\n\n## Reproduction\n1. Open https://acme.example${i.url}.\n2. Use ${i.rule === 'HORIZONTAL_OVERFLOW' ? '375 × 812' : '1440 × 900'} viewport.\n3. Observe: ${md(i.observation)}\n\n## Suggested fix\n${md(i.fix)}\n\n## Proof\n[EV-${id} — sample proof](./webops-workspace.html#evidence-${id})\n\nProduction citation route: /projects/acme/scans/104/evidence/EV-${id}\n\nScreenshot proof is unavailable in this prototype.\n`,
+          'text/markdown;charset=utf-8',
+        );
+        toast('Markdown downloaded');
+      }
+      function downloadLogs() {
+        download(
+          'scan-104-sample.log',
+          logs
+            .map((l) => `${l.seq} ${l.time} [${l.level}] ${l.message}`)
+            .join('\n'),
+          'text/plain;charset=utf-8',
+        );
+      }
+      function general(title, body) {
+        $('#generalDialog').innerHTML =
+          head(title, 'generalDialog') +
+          `<div class="dialogbody"><h2 id="generalHeading">${title}</h2>${body}</div>`;
+        showDialog($('#generalDialog'));
+      }
+      function openPage(url) {
+        const p = pages.find((p) => p.url === url);
+        general(
+          'Page inspection',
+          `<p class="mono">https://acme.example${esc(url)}</p><div class="detail-facts"><div class="kv"><span>Status</span><strong>${p.status}</strong></div><div class="kv"><span>Final URL</span><strong>${esc(url)}</strong></div><div class="kv"><span>Timing / depth</span><strong>${p.time} ms / ${p.depth}</strong></div><div class="kv"><span>Viewports checked</span><strong>1440 × 900 · 375 × 812</strong></div></div><h3>Issues on this page</h3>${
+            issues
+              .filter((i) => i.url === url)
+              .map(
+                (i) =>
+                  `<button class="proofcard" onclick="document.getElementById('generalDialog').close();openIssue(${i.id})"><span>${esc(i.title)}</span>${icon('arrow')}</button>`,
+              )
+              .join('') || '<p>No sample findings for this page.</p>'
+          }`,
+        );
+      }
+      const reports = [
+        {
+          id: 104,
+          date: '3 Nov 2026 · 10:42',
+          status: 'Completed',
+          pages: 24,
+          issues: 12,
+          duration: '2m 34s',
+        },
+        {
+          id: 103,
+          date: '2 Nov 2026 · 16:18',
+          status: 'Partial',
+          pages: 16,
+          issues: 8,
+          duration: '15m 00s',
+        },
+        {
+          id: 102,
+          date: '1 Nov 2026 · 09:30',
+          status: 'Completed',
+          pages: 24,
+          issues: 12,
+          duration: '2m 48s',
+        },
+        {
+          id: 101,
+          date: '31 Oct 2026 · 11:12',
+          status: 'Cancelled',
+          pages: 5,
+          issues: 2,
+          duration: '0m 37s',
+        },
+      ];
+      function renderReports() {
+        const shown = reports.slice(
+          (state.page - 1) * state.size,
+          state.page * state.size,
+        );
+        $('#dataset').innerHTML =
+          `<div class="tablewrap"><table class="reports"><thead><tr><th>Scan / date</th><th>Status</th><th>Pages</th><th>Issues</th><th>Duration</th><th></th></tr></thead><tbody>${shown.map((r) => `<tr><td><strong>#${r.id}</strong><div class="small muted">${r.date} IST</div></td><td><span class="badge ${r.status === 'Completed' ? 'green' : 'orange'}">${r.status}</span></td><td>${r.pages}</td><td>${r.issues}${r.status !== 'Completed' ? ' · incomplete' : ''}</td><td class="mono">${r.duration}</td><td><button class="textbtn" onclick="openReport(${r.id})">${r.status === 'Completed' ? 'Open report' : 'View run'} →</button></td></tr>`).join('')}</tbody></table></div>`;
+        pagination(reports.length);
+      }
+      function openReport(id = 104) {
+        const r = reports.find((r) => r.id === id);
+        const finished = r.status === 'Completed';
+        general(
+          finished ? `Report #${id}` : `Scan #${id}`,
+          `<div class="history-note">${finished ? 'Immutable sample snapshot · Current board edits do not change this view.' : 'Incomplete coverage · This run is not a completed report.'}</div><div class="row"><span class="badge ${finished ? 'green' : 'orange'}">${r.status}</span><span class="small muted">${r.date} IST</span></div><div class="detail-facts">${r.pages} pages checked · ${r.issues} findings · ${r.duration}</div>${!finished ? `<div class="notice">${r.status === 'Partial' ? 'Scan reached its time limit before all queued pages were checked.' : 'Scan was stopped by the project owner.'} Collected sample findings remain available.</div>` : ''}<h3>Issue snapshot</h3><p>Priorities and titles below reflect the saved scan, not the current board.</p><div style="max-height:260px;overflow:auto;margin-top:12px">${initial
+            .slice(0, r.issues)
+            .map(
+              (i) =>
+                `<button class="proofcard" onclick="openProof(${i.id})"><span>${esc(i.title)}<small>${i.priority} · Open · ${i.rule}</small></span>${icon('link')}</button>`,
+            )
+            .join(
+              '',
+            )}</div><h3>Coverage limitations</h3><p>${finished ? '6 URLs excluded by origin, robots.txt, or authentication policy. Results apply only to checked pages.' : 'Some pages were not visited. A count of zero findings would not establish a clean result.'}</p>`,
+        );
+      }
+      function renderPolicy() {
+        $('#dataset').innerHTML =
+          `<div class="policy-grid"><section><h3>Authorized origin</h3><p class="mono">https://acme.example</p><span class="badge green">✓ Explicitly approved</span><p style="margin-top:14px">Approved by Charan Sriteja<br>1 Nov 2026 · 09:00 IST</p><div class="notice">Default scope is public, unauthenticated pages. Login boundaries are recorded as limitations.</div></section><section><h3>Crawl limits</h3>${[
+            ['Page budget', '25'],
+            ['Maximum depth', '3'],
+            ['Concurrent pages', '2'],
+            ['Rate per origin', '2 requests / second'],
+            ['Scan timeout', '15 minutes'],
+            ['robots.txt', 'Respected'],
+            ['Form submissions', 'Disabled'],
+            ['Proof retention', '90 days'],
+          ]
+            .map(
+              ([k, v]) =>
+                `<div class="kv"><span>${k}</span><strong>${v}</strong></div>`,
+            )
+            .join(
+              '',
+            )}</section></div><div class="table-note">Policy changes require validation and explicit origin approval in the production application.</div>`;
+      }
+      function startDemo() {
+        general(
+          'Run a sample scan',
+          `<p>This interaction simulates progress locally. It will not connect to or test a website.</p><div class="detail-facts"><strong>Acme website</strong><br><span class="mono">https://acme.example</span><div class="kv"><span>Scope</span><strong>1 approved origin · 25 pages maximum</strong></div><div class="kv"><span>Safety</span><strong>Forms disabled · robots.txt respected</strong></div></div><div class="row" style="margin-top:22px"><button class="btn primary" onclick="beginDemo()">Start simulation</button><button class="btn" onclick="document.getElementById('generalDialog').close()">Back</button></div>`,
+        );
+      }
+      function beginDemo() {
+        $('#generalDialog').close();
+        runCount = 0;
+        $('#startScan').innerHTML = icon('close') + 'Cancel simulation';
+        $('#scanTitle').textContent =
+          'Demo scan #105 running · Inspecting approved pages';
+        $('#scanSubtitle').textContent =
+          '0 of 25 page budget used · Coverage is incomplete';
+        $('#reportButton').textContent = 'View live events';
+        $('#scanIcon').innerHTML = icon('pulse');
+        setView('logs');
+        timer = setInterval(() => {
+          runCount += 3;
+          logs.push({
+            seq: logs.length + 1,
+            time: new Date().toLocaleTimeString('en-GB', { hour12: false }),
+            level: 'info',
+            message: `Demo #105 · ${Math.min(runCount, 24)} pages inspected · evidence stored`,
+          });
+          $('#scanSubtitle').textContent =
+            `${Math.min(runCount, 24)} of 25 page budget used · Coverage is incomplete`;
+          $('#eventCount').textContent = logs.length;
+          if (state.tab === 'logs') {
+            state.sort = 'newest';
+            render();
+          }
+          if (runCount >= 24) {
+            clearInterval(timer);
+            timer = null;
+            $('#startScan').innerHTML = icon('play') + 'Run scan';
+            $('#scanIcon').innerHTML = icon('check');
+            $('#scanTitle').textContent =
+              'Demo scan #105 completed · Existing issue edits preserved';
+            $('#scanSubtitle').textContent =
+              '24 pages checked · 6 URLs skipped · Sample report #104 remains unchanged';
+            $('#reportButton').textContent = 'View sample report';
+            toast('Simulation complete · No websites were contacted');
+            render();
+          }
+        }, 1100);
+        render();
+      }
+      function cancelDemo() {
+        clearInterval(timer);
+        timer = null;
+        logs.push({
+          seq: logs.length + 1,
+          time: new Date().toLocaleTimeString('en-GB'),
+          level: 'warn',
+          message: 'Demo #105 cancelled by user · incomplete coverage retained',
+        });
+        $('#startScan').innerHTML = icon('play') + 'Run scan';
+        $('#scanTitle').textContent =
+          'Demo scan #105 cancelled · Coverage is incomplete';
+        $('#scanSubtitle').textContent =
+          `${runCount} pages inspected · Collected events retained · Latest completed scan is #104`;
+        $('#reportButton').textContent = 'View sample report';
+        $('#scanIcon').innerHTML = icon('close');
+        render();
+        toast('Simulation cancelled');
+      }
+      $('#contextToggle').onclick = () => {
+        const open = $('#scanContext').classList.toggle('revealed');
+        $('#contextToggle').setAttribute('aria-expanded', String(open));
+      };
+      $('#startScan').onclick = () => (timer ? cancelDemo() : startDemo());
+      $('#reportButton').onclick = () =>
+        timer ? setView('logs') : openReport();
+      $('#policyButton').onclick = $('#policyShortcut').onclick = () =>
+        setView('policy');
+      $('#skipShortcut').onclick = () => setView('overview', 'skipped');
+      $('#logsShortcut').onclick = () => setView('logs');
+      document
+        .querySelectorAll('[data-nav]')
+        .forEach((b) => (b.onclick = () => setView(b.dataset.nav)));
+      document
+        .querySelectorAll('[data-tab]')
+        .forEach(
+          (b) =>
+            (b.onclick = () =>
+              setView(
+                state.nav === 'overview'
+                  ? 'overview'
+                  : b.dataset.tab === 'issues'
+                    ? 'issues'
+                    : 'logs',
+                b.dataset.tab,
+              )),
+        );
+      $('#search').oninput = (e) => {
+        state.search = e.target.value;
+        state.page = 1;
+        renderData();
+      };
+      $('#filter').onchange = (e) => {
+        state.filter = e.target.value;
+        state.page = 1;
+        renderData();
+      };
+      $('#sort').onchange = (e) => {
+        state.sort = e.target.value;
+        state.page = 1;
+        renderData();
+      };
+      $('#menu').onclick = () => {
+        $('#sidebar').classList.toggle('open');
+        $('#menu').setAttribute(
+          'aria-expanded',
+          String($('#sidebar').classList.contains('open')),
+        );
+      };
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          $('#sidebar').classList.remove('open');
+          $('#menu').setAttribute('aria-expanded', 'false');
+        }
+      });
+      $('#designNotes').onclick = () =>
+        general(
+          'A calmer developer workspace',
+          `<p>This proposal follows the existing flow: project → approved scope → scan → triage → evidence → historical report.</p><h3>One screen, one decision</h3><p>The overview answers what needs attention and how much was checked. The primary action starts a scan; the triage queue puts the most urgent work first.</p><h3>Bounded datasets</h3><p>Issues, pages, skipped URLs, events, and reports use replacement pagination. Six rows is the default; filters reset to page one. No “load more” growth.</p><h3>Keep your place</h3><p>Issue details open in a side drawer. Proof is one click away, and closing it preserves your filters and page. Inline priority and status edits save locally.</p><h3>Trust before reassurance</h3><p>Coverage, skipped URLs, incomplete runs, and unavailable proof stay explicit. There is no invented health score. Reports retain their original issue fields.</p><h3>Responsive and accessible</h3><p>Native inputs, labeled controls, visible focus, modal focus containment, Escape to close, and responsive panels. On small screens only wide data tables scroll horizontally.</p><h3>Implementation handoff</h3><p>Map this shell to Mantine AppShell, Table, Drawer, Pagination, and Modal. Use server pagination and cursor-based event replay in production; keep current API authorization and optimistic version checks.</p><div class="notice">Standalone visual prototype with illustrative data. Browser storage demonstrates edit persistence; real scans, authentication, evidence storage, and signed proof URLs are not connected.</div>`,
+        );
+      render();
+      if (/^#evidence-\d+$/.test(location.hash)) {
+        const id = Number(location.hash.split('-')[1]);
+        if (initial.some((i) => i.id === id)) openProof(id);
+      }
+    </script>
+  </body>
+</html>

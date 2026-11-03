@@ -12,9 +12,9 @@ echo "=========================================================="
 REGION="${AWS_REGION:-$(aws configure get region || echo 'ap-south-1')}"
 REGION="${REGION:-ap-south-1}"
 STACK_NAME="${STACK_NAME:-webops-prod}"
-DB_PASSWORD="${DB_PASSWORD:-WebOpsAdmin2026!Secure}"
-BEDROCK_REGION="${BEDROCK_REGION:-us-east-1}"
-BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-3-5-sonnet-20241022-v2:0}"
+: "${DB_PASSWORD:?Set DB_PASSWORD before deploying}"
+BEDROCK_REGION="${BEDROCK_REGION:-ap-south-1}"
+BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-apac.amazon.nova-lite-v1:0}"
 
 echo "📍 Target Region: $REGION"
 
@@ -118,16 +118,8 @@ COGNITO_CLIENT=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='CognitoClientId'].OutputValue" \
   --output text)
 
-# Step 5: Database Migrations
-echo ""
-echo "🗄️  Step 5: Applying Database Migrations to RDS ($DB_HOST)..."
-MIGRATION_URL="postgresql://webops_admin:${DB_PASSWORD}@${DB_HOST}:5432/webops"
-
-for SQL in supabase/migrations/*.sql; do
-  echo "  Applying $SQL..."
-  docker run --rm -v "$(pwd)/$SQL:/migration.sql:ro" postgres:16-alpine \
-    psql -v ON_ERROR_STOP=1 "$MIGRATION_URL" -f /migration.sql || true
-done
+# The API applies checked-in migrations during startup over its private VPC connection.
+# The deploy machine must not connect directly to the private RDS instance.
 
 echo ""
 echo "=========================================================="

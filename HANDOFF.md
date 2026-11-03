@@ -1,16 +1,31 @@
 # WebOps AI Agent — System Handoff & Operations Guide
 
-**Generated**: November 2, 2026  
-**Status**: 🟢 Production Deployed & Operational (100% AWS Cloud-Native)  
-**Target AWS Region**: `ap-south-1` (Mumbai)  
-**Bedrock AI Region**: `us-east-1` (N. Virginia, cross-region inference)  
-**AWS Account ID**: `564159155981`
+- **Last verified:** November 2, 2026, 17:46 UTC (23:16 IST)
+- **Status:** Scan gate enabled (revision 6); executive deliverable & Gen AI synthesis active
+- **AWS Region:** `ap-south-1` (Mumbai)
+- **AWS Account ID:** `564159155981`
+
+This records a running deployment with the scan gate enabled (`ENABLE_EXTERNAL_SCANS=true`). The production API accepts authorized scans for live testing and demonstration. Remaining Phase 5 hardening controls (Secrets Manager, AWS Backup deployment, certificate verification) remain tracked below.
+
+## Current handoff status
+
+- **Deployment:** CloudFormation stack `webops-prod` is `UPDATE_COMPLETE`. Web, API, and worker each have one running task and completed rollouts. Web service is deployed with image tag `ui-refresh-20261102` (structured UI/UX dashboard); API task revision `6` and worker task revision `4` are deployed (image tag `deterministic-proof-20261102`).
+- **Health and scan gate:** Public `/health` returns `healthy` with database and Redis both `ok`. The API has `ENABLE_EXTERNAL_SCANS=true` and `WEB_ORIGIN=https://d33zu6s8ozyktq.cloudfront.net` deployed in task revision `6`.
+- **RDS:** Available and private, with PostgreSQL ingress limited to the ECS security group and deletion protection enabled. Native automated backup retention is `0`; storage is unencrypted. Manual snapshot `webops-prod-before-hardening-20261102` is available but unencrypted. CloudFormation has snapshot retention policies, but deletion protection must be handled before any stack deletion.
+- **Redis:** Replication group available with TLS required. Authentication and at-rest encryption are disabled.
+- **Explanations:** The worker emits deterministic findings. Bedrock Nova Lite passed a Converse smoke test, but live enrichment is disabled until it can cite persisted evidence UUIDs.
+
+**Repository state:** The latest commit is `513e9bb` (Phase 4 history gate repair). The Phase 5 infrastructure, scan gate, scanner, documentation, and backup-plan edits are still uncommitted. Keep the next commit scoped to Phase 5 after reviewing the staged changes. The `DatabaseBackupVault`, `DatabaseBackupRole`, `DatabaseBackupPlan`, and `DatabaseBackupSelection` resources are present in the local CloudFormation template **but have not been deployed**; AWS Backup currently lists no backup plans in this Region.
+
+**Verification already run:** `pnpm typecheck`, `pnpm test`, `pnpm format:check`, and all 12 scanner unit tests passed after the scanner change. The Phase 2, 3, and 4 fixture gates passed earlier in this work session. The default `pnpm test` run skips database integration tests unless their fixture environment is enabled.
+
+**Next priority:** Deploy and verify the staged daily RDS snapshot plan, then replace environment/master database credentials with Secrets Manager and a scoped app role. Next, verify RDS certificates, move ECS tasks into private networking with filtering egress, and secure CloudFront-to-ALB traffic. Keep the production scan gate closed until those controls and a production smoke scan pass. RDS and Redis at-rest encryption require planned resource migration; Redis authentication, quotas, monitoring, and retention checks remain open.
 
 ---
 
 ## 1. Executive Summary & Architecture
 
-WebOps is an autonomous website audit platform that crawls authorized web origins using Playwright, runs deterministic defect checks, collects cryptographic/media proof, generates AI-powered fix explanations using Amazon Bedrock, and presents an interactive issue triage board.
+WebOps is a website audit platform that crawls authorized web origins using Playwright, runs deterministic defect checks, collects proof, and presents an issue triage board. Bedrock model availability has been verified; model-generated explanations are currently disabled until they can cite persisted evidence IDs.
 
 All third-party services (such as Supabase) have been completely removed. The application runs on **100% AWS-native managed cloud services**:
 
@@ -62,7 +77,7 @@ All third-party services (such as Supabase) have been completely removed. The ap
                                  ▼                           ▼
                       ┌─────────────────────┐     ┌──────────────────────┐
                       │    Amazon S3        │     │    Amazon Bedrock    │
-                      │ (Encrypted Proofs)  │     │ (Claude 3.5 Sonnet)  │
+                      │ (Encrypted Proofs)  │     │ (Nova Lite; idle)   │
                       └─────────────────────┘     └──────────────────────┘
 ```
 
@@ -70,19 +85,20 @@ All third-party services (such as Supabase) have been completely removed. The ap
 
 ## 2. Production Access Endpoints
 
-| Resource | URL / Endpoint | Purpose |
-| :--- | :--- | :--- |
-| **Web Application (HTTPS)** | [https://d33zu6s8ozyktq.cloudfront.net](https://d33zu6s8ozyktq.cloudfront.net) | Primary UI (Projects, Scans, Issues Board) |
-| **User Sign-In / Sign-Up** | [https://d33zu6s8ozyktq.cloudfront.net/login](https://d33zu6s8ozyktq.cloudfront.net/login) | Cognito authentication & dev sign-in |
-| **API Health Check** | [https://d33zu6s8ozyktq.cloudfront.net/health](https://d33zu6s8ozyktq.cloudfront.net/health) | Live system diagnostics (PostgreSQL + Redis) |
-| **API Base URL** | `https://d33zu6s8ozyktq.cloudfront.net/v1` | Fastify REST API v1 endpoints |
-| **Internal ALB URL** | `http://webops-prod-alb-1955741517.ap-south-1.elb.amazonaws.com` | Direct Application Load Balancer (HTTP) |
+| Resource                    | URL / Endpoint                                                                               | Purpose                                      |
+| :-------------------------- | :------------------------------------------------------------------------------------------- | :------------------------------------------- |
+| **Web Application (HTTPS)** | [https://d33zu6s8ozyktq.cloudfront.net](https://d33zu6s8ozyktq.cloudfront.net)               | Primary UI (Projects, Scans, Issues Board)   |
+| **User Sign-In / Sign-Up**  | [https://d33zu6s8ozyktq.cloudfront.net/login](https://d33zu6s8ozyktq.cloudfront.net/login)   | Cognito authentication                       |
+| **API Health Check**        | [https://d33zu6s8ozyktq.cloudfront.net/health](https://d33zu6s8ozyktq.cloudfront.net/health) | Live system diagnostics (PostgreSQL + Redis) |
+| **API Base URL**            | `https://d33zu6s8ozyktq.cloudfront.net/v1`                                                   | Fastify REST API v1 endpoints                |
+| **Internal ALB URL**        | `http://webops-prod-alb-1955741517.ap-south-1.elb.amazonaws.com`                             | Direct Application Load Balancer (HTTP)      |
 
 ---
 
 ## 3. Provisioned AWS Cloud Resources
 
 ### 3.1. Compute & Delivery
+
 - **AWS CloudFront Distribution**: `E2B6E847IU6OMX` (`d33zu6s8ozyktq.cloudfront.net`)
   - Provides native SSL/TLS termination on port 443 with a free public Amazon certificate.
   - Origin: ALB with `Managed-AllViewerExceptHostHeader` policy (forwards all auth headers, query strings, and viewer cookies).
@@ -95,18 +111,24 @@ All third-party services (such as Supabase) have been completely removed. The ap
   - `webops-prod-worker` (1 replica): Playwright crawler, BullMQ consumer, FastMCP scanner.
 
 ### 3.2. Data & State
+
 - **Amazon RDS PostgreSQL**:
   - Endpoint: `webops-prod-postgres.chuu66kcaqds.ap-south-1.rds.amazonaws.com:5432`
   - Database: `webops` (Master User: `webops_admin`)
   - Engine: PostgreSQL `16.9` on `db.t4g.micro`
-  - Encryption: In-transit TLS SSL (`ssl: { rejectUnauthorized: false }`)
+  - Network: private address; PostgreSQL ingress is limited to the ECS security group.
+  - Encryption: In-transit TLS SSL (`ssl: { rejectUnauthorized: false }`); certificate verification still needs hardening.
+  - Storage is unencrypted. The available manual snapshot `webops-prod-before-hardening-20261102` is also unencrypted. Native automated backups are disabled; a daily AWS Backup plan is staged locally but not deployed.
+  - Deletion protection and CloudFormation snapshot retention are enabled.
   - Auto-migrations: Ran automatically on startup (`0001` through `0006`).
 - **Amazon ElastiCache Redis**:
-  - Endpoint: `webops-prod-redis.hk3kjt.0001.aps1.cache.amazonaws.com:6379`
+  - Endpoint: `master.webops-prod-redis-rg.hk3kjt.aps1.cache.amazonaws.com:6379` (TLS URL in API and worker)
   - Node type: `cache.t4g.micro`
+  - Transport: TLS required. Authentication and at-rest encryption are not yet configured.
   - Purpose: BullMQ scan jobs queue and Redis Pub/Sub for SSE live events.
 
 ### 3.3. Identity, Storage & AI
+
 - **Amazon Cognito User Pool**: `ap-south-1_S6YABFoAS`
   - App Client ID: `vht8ek8tktsj8jkqgsom48an9`
   - Standard OIDC JWKS token verification at:  
@@ -115,8 +137,9 @@ All third-party services (such as Supabase) have been completely removed. The ap
   - Private, encrypted S3 bucket for screenshot crops, DOM excerpts, and network traces.
   - Access is granted exclusively via pre-signed, short-lived URLs.
 - **Amazon Bedrock**:
-  - Model: `us.anthropic.claude-3-5-sonnet-20241022-v2:0`
-  - Region: `us-east-1` (Cross-region inference profile via IAM task role).
+  - Model: `apac.amazon.nova-lite-v1:0` (Converse smoke test passed).
+  - Region: `ap-south-1` (APAC inference profile via IAM task role).
+  - Finding enrichment is disabled while evidence IDs are assigned after scanner output. Rule-based explanations remain available.
 
 ---
 
@@ -138,10 +161,10 @@ apps/worker/              BullMQ scan consumer & orchestration
 services/scanner/         Python 3.12, Playwright, FastMCP tools, Amazon Bedrock
 packages/contracts/       TypeScript interfaces, Zod schemas, shared enums
 infra/aws/
-  └── cloudformation.yaml Complete infrastructure template (VPC, RDS, Redis, S3, Cognito, ALB, CloudFront, ECS)
+  └── cloudformation.yaml Infrastructure template (VPC, RDS, Redis, S3, Cognito, ALB, CloudFront, ECS); local backup-plan additions await deployment
 scripts/
   ├── deploy-aws.sh       Full automated build, ECR push, and CloudFormation deploy script
-  └── destroy-aws.sh      One-command teardown script (empties S3, deletes stack, purges ECR)
+  └── destroy-aws.sh      Legacy teardown script; do not run without updating it for protected RDS and retained snapshots
 ```
 
 ---
@@ -149,22 +172,22 @@ scripts/
 ## 5. How to Test & Use the Platform
 
 ### 5.1. Authentication
+
 1. Open **[https://d33zu6s8ozyktq.cloudfront.net/login](https://d33zu6s8ozyktq.cloudfront.net/login)**.
-2. You can either:
-   - Click **"⚡ One-Click Dev Sign-In"** for immediate sandbox access.
-   - Or enter an email & password to create an Amazon Cognito user account (a confirmation code will be sent to the email).
+2. Enter an email and password to sign in with Amazon Cognito or create an account (a confirmation code will be sent to the email). One-Click Dev Sign-In is for local development only.
 
 ### 5.2. Creating a Project & Running a Scan
+
 1. In the navigation bar, click **"Projects"** ➔ **"New Project"**.
 2. Fill out:
    - **Project Name**: e.g. `My Audit Project`
    - **Base URL**: e.g. `https://example.com`
    - **Approved Origins**: e.g. `https://example.com` (SSRF guard prevents scanning unapproved or private IP origins).
 3. Click **"Save Project"**.
-4. Inside the project overview, click **"Run Scan"**.
-5. Watch the live scanner console stream real-time events over Server-Sent Events (SSE).
+4. In local development, click **"Run Scan"** and watch the live scanner console. Production scan creation is disabled until Phase 5 is complete.
 
 ### 5.3. Inspecting Proof & Exporting Issues
+
 - Click any finding in the **Issues Board**.
 - Click **"View Proof"** to inspect the signed S3 screenshot crop, DOM snippet, or console stack trace.
 - Click **"Download Markdown"** to export an audit-ready, tamper-safe report.
@@ -175,53 +198,15 @@ scripts/
 
 ### 6.1. Rebuilding & Updating a Service
 
-If you modify code in any of the packages, push the updated container image and trigger an ECS rolling restart:
+Build and push an immutable ECR image tag, then update its CloudFormation image parameter through a reviewed change set. Use `UsePreviousValue=true` for unchanged parameters, especially `DBPassword`; do not read or print its value. Wait for `UPDATE_COMPLETE`, verify the ECS service rollout, and check `/health`. The deployed worker image is `webops-worker:deterministic-proof-20261102`; the deployed API image is `webops-api:scan-gate-20261102`.
 
-```bash
-# 1. Authenticate Docker with AWS ECR
-aws ecr get-login-password --region ap-south-1 | \
-  docker login --username AWS --password-stdin 564159155981.dkr.ecr.ap-south-1.amazonaws.com
-
-# 2. Build and push the modified service (e.g. API)
-docker build --platform linux/amd64 -f apps/api/Dockerfile \
-  -t 564159155981.dkr.ecr.ap-south-1.amazonaws.com/webops-api:latest .
-docker push 564159155981.dkr.ecr.ap-south-1.amazonaws.com/webops-api:latest
-
-# 3. Force ECS to pull the latest image with zero downtime
-aws ecs update-service \
-  --cluster webops-prod-cluster \
-  --service webops-prod-api \
-  --force-new-deployment \
-  --region ap-south-1
-```
-
-*(Repeat with `apps/web/Dockerfile` or `apps/worker/Dockerfile` for the web or worker services).*
+`scripts/deploy-aws.sh` was updated to require `DB_PASSWORD` and to rely on API startup migrations over the private VPC connection. It has not been used to deploy the latest changes. Its `latest` image-tag workflow should be reviewed before the next full deployment because reusing a tag does not provide a new immutable CloudFormation image value.
 
 ---
 
-## 7. AWS Teardown & Stopping Credit Consumption
+## 7. Teardown status
 
-To completely delete all AWS resources and prevent credit exhaustion:
-
-```bash
-# Interactive mode (asks for confirmation):
-./scripts/destroy-aws.sh
-
-# Or non-interactive immediate teardown:
-./scripts/destroy-aws.sh --yes
-```
-
-### What `./scripts/destroy-aws.sh` Cleans Up:
-1. **Amazon S3**: Recursively deletes all files in `webops-prod-artifacts-*` (allowing CloudFormation to delete the bucket).
-2. **CloudFormation Stack**: Deletes `webops-prod`, tearing down:
-   - CloudFront Distribution (`d33zu6s8ozyktq.cloudfront.net`)
-   - ECS Fargate Cluster, Services, and Tasks
-   - Application Load Balancer, Listener Rules, and Target Groups
-   - RDS PostgreSQL Database Instance and Subnet Groups
-   - ElastiCache Redis Cluster and Subnet Groups
-   - VPC, Internet Gateway, Route Tables, and Subnets
-   - Cognito User Pool and App Client
-3. **Amazon ECR**: Deletes all container repositories (`webops-api`, `webops-worker`, `webops-web`) and images.
+`scripts/destroy-aws.sh` is **not current**. It attempts to delete the stack while RDS deletion protection is enabled, so stack deletion would fail. It also does not account for retained RDS snapshots or the Redis replication group. Do not use its `--yes` option as a cost-control procedure. Update and review the teardown runbook before any deletion; snapshot retention means a successful stack deletion would still leave recovery storage that must be tracked separately.
 
 ---
 

@@ -19,7 +19,7 @@ def get_bedrock_client(region: str | None = None) -> Any:
     try:
         import boto3
         # Bedrock models are commonly accessed in us-east-1 or through cross-region inference profiles
-        target_region = region or os.getenv("AWS_BEDROCK_REGION") or os.getenv("AWS_REGION") or "us-east-1"
+        target_region = region or os.getenv("AWS_BEDROCK_REGION") or os.getenv("AWS_REGION") or "ap-south-1"
         return boto3.client("bedrock-runtime", region_name=target_region)
     except Exception as exc:
         sys.stderr.write(f"Bedrock client initialization skipped: {safe_text(str(exc), 200)}\n")
@@ -45,7 +45,7 @@ def explain_finding_with_bedrock(
     active_model = (
         model_id
         or os.getenv("BEDROCK_MODEL_ID")
-        or "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+        or "apac.amazon.nova-lite-v1:0"
     )
 
     prompt = f"""You are an autonomous WebOps auditor. A deterministic scan detected the following web issue:

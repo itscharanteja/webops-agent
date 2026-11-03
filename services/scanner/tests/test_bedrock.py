@@ -1,9 +1,24 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from scanner.bedrock import explain_finding_with_bedrock, get_bedrock_client
+from scanner.runner import Crawler
 
 
 class TestBedrock(unittest.TestCase):
+    def test_scanner_emits_deterministic_finding_before_proof_ids_exist(self):
+        crawler = Crawler.__new__(Crawler)
+        crawler.emitter = MagicMock()
+        finding = {
+            "description": "Deterministic explanation",
+            "impact": "Known impact",
+            "evidence": [{"kind": "dom", "payload": {"html": "<img>"}}],
+        }
+        with patch.dict("os.environ", {"BEDROCK_MODEL_ID": "apac.amazon.nova-lite-v1:0"}):
+            with patch("scanner.bedrock.get_bedrock_client") as client:
+                crawler.send_finding("finding-1", finding)
+        client.assert_not_called()
+        crawler.emitter.send.assert_called_once_with("finding", "finding-1", finding)
+
     def test_explain_finding_returns_none_when_client_fails(self):
         with patch("scanner.bedrock.get_bedrock_client", return_value=None):
             result = explain_finding_with_bedrock({"rule_id": "TEST"}, ["ev-1"])

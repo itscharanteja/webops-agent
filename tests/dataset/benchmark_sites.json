@@ -1,0 +1,166 @@
+[
+  {
+    "id": "port-01",
+    "name": "Lee Robinson Portfolio",
+    "url": "https://leerob.io",
+    "archetype": "personal_portfolio",
+    "expected_confidence_min": 0.85,
+    "expected_competitor_action": "bypassed_portfolio_mode",
+    "test_focus": "Validates personal blog/portfolio detection, first-person copy signals, absence of pricing, and personal project links.",
+    "key_signals": [
+      "first_person_copy",
+      "personal_projects",
+      "no_pricing_table",
+      "github_social"
+    ]
+  },
+  {
+    "id": "port-02",
+    "name": "Paco Coursey Design Portfolio",
+    "url": "https://paco.me",
+    "archetype": "personal_portfolio",
+    "expected_confidence_min": 0.9,
+    "expected_competitor_action": "bypassed_portfolio_mode",
+    "test_focus": "Minimalist designer showcase. Confirms no corporate competitor (e.g. Stripe) is falsely assigned to a solo designer.",
+    "key_signals": [
+      "personal_name_domain",
+      "design_craft",
+      "personal_case_studies"
+    ]
+  },
+  {
+    "id": "port-03",
+    "name": "Tania Rascia Developer Showcase",
+    "url": "https://taniarascia.com",
+    "archetype": "personal_portfolio",
+    "expected_confidence_min": 0.88,
+    "expected_competitor_action": "bypassed_portfolio_mode",
+    "test_focus": "Software developer blog & portfolio with resume links and open-source repositories.",
+    "key_signals": [
+      "resume_link",
+      "about_me_page",
+      "first_person_voice",
+      "developer_portfolio"
+    ]
+  },
+  {
+    "id": "saas-01",
+    "name": "Resend (Email API for Developers)",
+    "url": "https://resend.com",
+    "archetype": "commercial_product",
+    "category": "developer_tools",
+    "expected_confidence_min": 0.92,
+    "expected_competitor_action": "spawned_head_to_head",
+    "benchmark_rival": "Postmark / SendGrid",
+    "test_focus": "Developer B2B SaaS with pricing tiers, API docs, code blocks, and high-converting dark-mode CTA.",
+    "key_signals": [
+      "pricing_page",
+      "api_docs",
+      "commercial_trial_cta",
+      "b2b_saas"
+    ]
+  },
+  {
+    "id": "saas-02",
+    "name": "Dub.co (Open-Source Link Management)",
+    "url": "https://dub.co",
+    "archetype": "commercial_product",
+    "category": "saas_productivity",
+    "expected_confidence_min": 0.94,
+    "expected_competitor_action": "spawned_head_to_head",
+    "benchmark_rival": "Bitly",
+    "test_focus": "Modern Next.js commercial SaaS with enterprise pricing, customer logos, and SOC2 compliance badges.",
+    "key_signals": [
+      "pricing_plans",
+      "enterprise_features",
+      "soc2_compliance",
+      "customer_testimonials"
+    ]
+  },
+  {
+    "id": "saas-03",
+    "name": "Cal.com (Open Scheduling Infrastructure)",
+    "url": "https://cal.com",
+    "archetype": "commercial_product",
+    "category": "saas_productivity",
+    "expected_confidence_min": 0.95,
+    "expected_competitor_action": "spawned_head_to_head",
+    "benchmark_rival": "Calendly",
+    "test_focus": "Commercial product platform competing directly against Calendly. Tests Agent 2 rival benchmarking.",
+    "key_signals": [
+      "pricing_tiers",
+      "booking_flow",
+      "b2b_integrations",
+      "commercial_signup"
+    ]
+  },
+  {
+    "id": "saas-04",
+    "name": "Supabase (Firebase Alternative)",
+    "url": "https://supabase.com",
+    "archetype": "commercial_product",
+    "category": "developer_tools",
+    "expected_confidence_min": 0.96,
+    "expected_competitor_action": "spawned_head_to_head",
+    "benchmark_rival": "Firebase / AWS Amplify",
+    "test_focus": "Database platform with extensive documentation, pricing tiers, and GitHub stars social proof.",
+    "key_signals": [
+      "developer_infrastructure",
+      "pricing_calculator",
+      "enterprise_sla"
+    ]
+  },
+  {
+    "id": "ecom-01",
+    "name": "Raycast Store & Pro",
+    "url": "https://www.raycast.com",
+    "archetype": "commercial_product",
+    "category": "developer_tools",
+    "expected_confidence_min": 0.92,
+    "expected_competitor_action": "spawned_head_to_head",
+    "benchmark_rival": "Alfred / Linear",
+    "test_focus": "High-polish desktop app with extension store, pro subscription pricing, and keyboard navigation.",
+    "key_signals": ["pro_pricing", "store_catalog", "commercial_downloads"]
+  },
+  {
+    "id": "sandbox-01",
+    "name": "The Internet (Heroku Test App)",
+    "url": "https://the-internet.herokuapp.com",
+    "archetype": "general_web",
+    "expected_confidence_min": 0.7,
+    "expected_competitor_action": "standard_audit",
+    "test_focus": "Gold-standard test fixture with dynamic controls, broken images, JavaScript alerts, and auth barriers.",
+    "key_signals": ["test_fixture", "permissive_robots_txt", "known_edge_cases"]
+  },
+  {
+    "id": "sandbox-02",
+    "name": "Quotes to Scrape (Playwright Practice Sandbox)",
+    "url": "https://quotes.toscrape.com",
+    "archetype": "general_web",
+    "expected_confidence_min": 0.75,
+    "expected_competitor_action": "standard_audit",
+    "test_focus": "Public bot-friendly sandbox site with explicit robots.txt permission, pagination links, and tags.",
+    "key_signals": ["scraping_sandbox", "pagination_crawl", "zero_anti_bot"]
+  },
+  {
+    "id": "baseline-01",
+    "name": "Example Domain (IANA Reference)",
+    "url": "https://example.com",
+    "archetype": "general_web",
+    "expected_confidence_min": 0.8,
+    "expected_competitor_action": "standard_audit",
+    "test_focus": "Pristine baseline: 1 single page, 100% compliant HTML, 0 errors, perfect 100/100 health score.",
+    "key_signals": ["iana_standard", "single_page_baseline", "clean_score"]
+  },
+  {
+    "id": "fixture-01",
+    "name": "WebOps Local Test Fixture",
+    "url": "http://localhost:8080/index.html",
+    "archetype": "developer_tools",
+    "expected_confidence_min": 0.85,
+    "expected_competitor_action": "spawned_head_to_head",
+    "benchmark_rival": "Stripe",
+    "test_focus": "Local test fixture with 6 intentionally seeded defects (unlabeled input, missing alt, overflow, broken link, console error).",
+    "key_signals": ["local_fixture", "seeded_defects", "deterministic_checks"]
+  }
+]

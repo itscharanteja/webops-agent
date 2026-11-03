@@ -3,6 +3,7 @@ import { Redis } from 'ioredis';
 import { SCAN_QUEUE_NAME, type ScanEvent } from '@webops/contracts';
 
 export interface ScanRuntime {
+  ping(): Promise<boolean>;
   enqueue(scanId: string): Promise<void>;
   publish(event: ScanEvent): Promise<void>;
   subscribe(
@@ -16,6 +17,9 @@ export function createScanRuntime(redisUrl: string): ScanRuntime {
   const redis = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const queue = new Queue(SCAN_QUEUE_NAME, { connection: redis });
   return {
+    async ping() {
+      return (await redis.ping()) === 'PONG';
+    },
     async enqueue(scanId) {
       await queue.add(
         'scan',

@@ -6,9 +6,9 @@ WebOps is an autonomous website security and quality audit application for sites
 
 - **Authentication**: Amazon Cognito User Pool (Email signup/login, verification codes, standard OIDC JWTs with JWKS verification).
 - **Proof Artifact Storage**: Amazon S3 (Private bucket, SSE-S3 encryption, presigned short-lived URLs, 90-day retention cleanup).
-- **Generative AI Reasoning**: Amazon Bedrock (Anthropic Claude 3.5 Sonnet & Nova via Converse API with deterministic fallback).
-- **Database**: PostgreSQL (Amazon RDS PostgreSQL in production, local Postgres in Docker Compose).
-- **Queuing & Event Fan-out**: Redis (Amazon ElastiCache in production, local Redis in Docker Compose).
+- **Deterministic explanations**: Findings use rule-based explanations. Bedrock enrichment is held until it can cite persisted evidence IDs.
+- **Database**: Private Amazon RDS PostgreSQL in production, local Postgres in Docker Compose.
+- **Queuing & Event Fan-out**: TLS-only Amazon ElastiCache Redis in production, local Redis in Docker Compose.
 - **Compute & Hosting**: AWS ECS Fargate & Application Load Balancer (ALB).
 
 ## Local Setup
@@ -36,17 +36,24 @@ cd services/scanner && uv run python -m unittest discover -s tests -v
 
 ## AWS Production Deployment
 
-Deploy the complete infrastructure to AWS using the automated script:
+Set `DB_PASSWORD` from your secret manager, then deploy the complete infrastructure:
 
 ```sh
 ./scripts/deploy-aws.sh
 ```
 
+`DB_PASSWORD` is required; the deploy script no longer supplies a shared default. Do not reuse a committed or previously exposed password. The current CloudFormation task definitions still carry the database credential in environment variables; move it to AWS Secrets Manager before accepting scans of real external sites.
+
 This automates:
+
 1. Creating Amazon ECR repositories (`webops-api`, `webops-worker`, `webops-web`).
 2. Building and pushing Docker container images.
 3. Deploying the CloudFormation template in `infra/aws/cloudformation.yaml` provisioning VPC, ECS Fargate cluster, S3 bucket, Amazon Cognito User Pool, and Application Load Balancer.
 4. Outputting the public Application Load Balancer DNS URL.
+
+### Production readiness
+
+The deployed RDS instance is private, Redis requires TLS, and the API health check pings Redis. A manual RDS recovery snapshot exists. Production scan requests return `503 SCANS_DISABLED` until `ENABLE_EXTERNAL_SCANS=true` is deliberately set after the Phase 5 gate. Bedrock model availability was verified, but finding enrichment is disabled until evidence is stored and model citations can be checked against real evidence IDs. Phase 5 is still open: production database credentials are in ECS environment variables and use the master role; RDS and Redis storage encryption, automated RDS backups, Redis authentication, verified RDS certificates, filtering egress, private ECS networking, and TLS between CloudFront and the ALB remain to be implemented.
 
 ## AWS Teardown (Remove All Cloud Resources)
 
@@ -60,14 +67,15 @@ This will cleanly empty and remove the S3 proof bucket, terminate the CloudForma
 
 ## Environment Variables
 
-| Variable | Use |
-| --- | --- |
-| `DATABASE_URL` | API connection as the RLS-constrained `webops_app` role / RDS |
-| `WORKER_DATABASE_URL` | Worker connection as the scan-scoped `webops_worker` role |
-| `REDIS_URL` | Redis / ElastiCache connection string for BullMQ |
-| `AWS_REGION` | AWS Region (default: `ap-south-1`) |
-| `S3_BUCKET_NAME` | Private S3 bucket for scan proof artifacts |
-| `COGNITO_USER_POOL_ID` | Amazon Cognito User Pool ID for JWT token verification |
-| `COGNITO_CLIENT_ID` | Amazon Cognito User Pool Web App Client ID |
-| `AWS_BEDROCK_REGION` | AWS Region for Bedrock AI model invocations (default: `us-east-1`) |
-| `BEDROCK_MODEL_ID` | Bedrock inference profile (default: `us.anthropic.claude-3-5-sonnet-20241022-v2:0`) |
+| Variable                | Use                                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | API connection; local setup uses `webops_app`, production still uses the RDS master role       |
+| `WORKER_DATABASE_URL`   | Worker connection; local setup uses `webops_worker`, production still uses the RDS master role |
+| `REDIS_URL`             | Redis / ElastiCache connection string for BullMQ                                               |
+| `AWS_REGION`            | AWS Region (default: `ap-south-1`)                                                             |
+| `S3_BUCKET_NAME`        | Private S3 bucket for scan proof artifacts                                                     |
+| `COGNITO_USER_POOL_ID`  | Amazon Cognito User Pool ID for JWT token verification                                         |
+| `COGNITO_CLIENT_ID`     | Amazon Cognito User Pool Web App Client ID                                                     |
+| `AWS_BEDROCK_REGION`    | AWS Region for Bedrock AI model invocations (default: `ap-south-1`)                            |
+| `BEDROCK_MODEL_ID`      | Bedrock inference profile (default: `apac.amazon.nova-lite-v1:0`)                              |
+| `ENABLE_EXTERNAL_SCANS` | Production scan gate; keep `false` until the Phase 5 egress and smoke-test gate passes         |

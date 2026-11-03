@@ -2,7 +2,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const localDir = path.resolve(root, process.env.ARTIFACT_DIR ?? '.artifacts');

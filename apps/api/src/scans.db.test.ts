@@ -217,6 +217,7 @@ describe.skipIf(!enabled)('Phase 2 fixture gate', () => {
 
   it('records failed coverage when the queue cannot accept a scan', async () => {
     const unavailableRuntime: ScanRuntime = {
+      ping: async () => false,
       enqueue: async () => {
         throw new Error('Queue unavailable');
       },

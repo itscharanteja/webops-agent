@@ -58,7 +58,9 @@ export interface AuthVerifierOptions {
   supabaseAudience?: string | undefined;
 }
 
-export function createAuthVerifier(options: AuthVerifierOptions): TokenVerifier {
+export function createAuthVerifier(
+  options: AuthVerifierOptions,
+): TokenVerifier {
   const devVerifier = createDevOrMockVerifier();
 
   if (options.cognitoUserPoolId && options.cognitoRegion) {

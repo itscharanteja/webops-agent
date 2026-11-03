@@ -23,6 +23,7 @@ type Deps = {
   runtime?: ScanRuntime;
   getUser: (request: FastifyRequest) => Promise<string>;
   resolver?: Resolver;
+  allowExternalScans?: boolean;
 };
 type ApiError = Error & { statusCode?: number; code?: string };
 const uuid =
@@ -69,6 +70,12 @@ export function registerScanRoutes(app: FastifyInstance, deps: Deps) {
       const projectId = requireId((request.params as { id: string }).id);
       const project = await deps.projects.get(user, projectId);
       if (!project) return fail(404, 'NOT_FOUND', 'Project not found');
+      if (deps.allowExternalScans === false)
+        return fail(
+          503,
+          'SCANS_DISABLED',
+          'External scans are disabled until production egress controls are ready',
+        );
       try {
         await validateApprovedOrigins(
           project.baseUrl,

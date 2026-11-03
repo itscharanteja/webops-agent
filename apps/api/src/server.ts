@@ -59,6 +59,9 @@ const app = await buildApp({
   scanRepository: new PgScanRepository(pool),
   issueRepository: new IssueRepository(pool),
   scanRuntime,
+  allowExternalScans:
+    process.env.NODE_ENV !== 'production' ||
+    process.env.ENABLE_EXTERNAL_SCANS === 'true',
   verifyToken: createAuthVerifier({
     cognitoUserPoolId: process.env.COGNITO_USER_POOL_ID,
     cognitoRegion:
@@ -76,7 +79,7 @@ const app = await buildApp({
       database = (res.rowCount ?? 0) > 0;
     } catch {}
     try {
-      redis = true;
+      redis = await scanRuntime.ping();
     } catch {}
     return { database, redis };
   },
