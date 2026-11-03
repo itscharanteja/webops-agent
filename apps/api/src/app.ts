@@ -12,6 +12,7 @@ import {
 } from '@webops/contracts';
 import type { ProjectRepository } from './repository.js';
 import type { TokenVerifier } from './auth.js';
+import { registerAuditSummaryRoutes } from './audit-summary-routes.js';
 import { registerScanRoutes } from './scan-routes.js';
 import type { ScanRepository } from './scan-repository.js';
 import type { ScanRuntime } from './scan-runtime.js';
@@ -390,6 +391,11 @@ export async function buildApp(deps: Deps) {
     ...(deps.scanRepository ? { scans: deps.scanRepository } : {}),
     ...(deps.scanRuntime ? { runtime: deps.scanRuntime } : {}),
     ...(deps.resolver ? { resolver: deps.resolver } : {}),
+  });
+  registerAuditSummaryRoutes(app, {
+    projects: deps.repository,
+    ...(deps.scanRepository ? { scans: deps.scanRepository } : {}),
+    getUser: (request) => userId(request, deps.verifyToken),
   });
   registerIssueRoutes(app, {
     issues: deps.issueRepository,

@@ -435,3 +435,24 @@ export type Evidence = z.infer<typeof evidenceSchema>;
 
 export * from './persona-triage.js';
 export * from './discord-dispatcher.js';
+
+export const auditSummaryDraftSchema = z.object({
+  v: z.literal(1),
+  scanId: z.string().uuid(),
+  source: z.enum(['bedrock', 'fallback']),
+  generatedAt: z.string().datetime(),
+  overview: z.string().max(2000),
+  limitation: z.string().max(500).nullable(),
+  highlights: z
+    .array(
+      z.object({
+        issueId: z.string().uuid(),
+        title: z.string(),
+        observation: z.string(),
+        suggestedFix: z.string(),
+        evidenceIds: z.array(z.string().uuid()).min(1),
+      }),
+    )
+    .max(3),
+});
+export type AuditSummaryDraft = z.infer<typeof auditSummaryDraftSchema>;

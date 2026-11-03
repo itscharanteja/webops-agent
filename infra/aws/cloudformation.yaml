@@ -586,6 +586,10 @@ Resources:
               Value: !Ref 'AWS::Region'
             - Name: S3_BUCKET_NAME
               Value: !Ref ArtifactsBucket
+            - Name: AWS_BEDROCK_REGION
+              Value: !Ref BedrockRegion
+            - Name: BEDROCK_MODEL_ID
+              Value: !Ref BedrockModelId
             - Name: AWS_REGION
               Value: !Ref 'AWS::Region'
           LogConfiguration:

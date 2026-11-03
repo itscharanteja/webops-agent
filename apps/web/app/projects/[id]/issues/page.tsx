@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -11,14 +11,14 @@ import {
   Card,
   Container,
   Group,
-  SegmentedControl,
+  Loader,
   Select,
   Stack,
   Table,
   Text,
   Title,
 } from '@mantine/core';
-import type { Issue, Project, TargetPersona } from '@webops/contracts';
+import type { Issue, Project } from '@webops/contracts';
 import { apiFetch } from '../../../../lib/client';
 
 export default function IssuesBoard() {
@@ -34,16 +34,21 @@ export default function IssuesBoard() {
   const [priority, setPriority] = useState<string | null>(null);
   const [sort, setSort] = useState('last_seen');
   const [direction, setDirection] = useState('desc');
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const requestId = useRef(0);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(
-    async (offset = 0) => {
+    async (pageOffset = 0) => {
+      const currentRequest = ++requestId.current;
+      setLoading(true);
       try {
         const query = new URLSearchParams({
           limit: '20',
-          offset: String(offset),
+          offset: String(pageOffset),
           sort,
           direction,
         });
@@ -51,15 +56,17 @@ export default function IssuesBoard() {
         if (priority) query.set('priority', priority);
         if (persona && persona !== 'all') query.set('persona', persona);
         const result = await apiFetch(`/v1/projects/${id}/issues?${query}`);
-        setIssues((previous) =>
-          offset === 0 ? result.items : [...previous, ...result.items],
-        );
+        if (currentRequest !== requestId.current) return;
+        setIssues(result.items);
         setNextOffset(result.nextOffset);
         setError('');
       } catch (cause) {
+        if (currentRequest !== requestId.current) return;
         setError(
           cause instanceof Error ? cause.message : 'Could not load issues',
         );
+      } finally {
+        if (currentRequest === requestId.current) setLoading(false);
       }
     },
     [id, status, priority, persona, sort, direction],
@@ -72,7 +79,8 @@ export default function IssuesBoard() {
   }, [id]);
 
   useEffect(() => {
-    void load();
+    setOffset(0);
+    void load(0);
   }, [load]);
 
   const handlePersonaChange = (val: string) => {
@@ -99,41 +107,11 @@ export default function IssuesBoard() {
       setError(
         cause instanceof Error ? cause.message : 'Could not update issue',
       );
-      void load();
+      void load(offset);
     } finally {
       setBusy(null);
     }
   }
-
-  const getPersonaBadge = (p?: TargetPersona | string | null) => {
-    switch (p) {
-      case 'ui_ux':
-        return (
-          <Badge color="violet" size="xs" variant="light">
-            🎨 Design
-          </Badge>
-        );
-      case 'backend':
-        return (
-          <Badge color="red" size="xs" variant="light">
-            ⚙️ Backend
-          </Badge>
-        );
-      case 'content_seo':
-        return (
-          <Badge color="green" size="xs" variant="light">
-            📝 Content
-          </Badge>
-        );
-      case 'frontend':
-      default:
-        return (
-          <Badge color="blue" size="xs" variant="light">
-            💻 Frontend
-          </Badge>
-        );
-    }
-  };
 
   return (
     <Container size="xl" py="xl">
@@ -143,7 +121,9 @@ export default function IssuesBoard() {
         </Anchor>
         <Group justify="space-between">
           <Title order={1}>Issues Board</Title>
-          <Badge size="lg">{issues.length} shown</Badge>
+          <Badge size="lg">
+            {loading ? 'Loading' : `${issues.length} shown`}
+          </Badge>
         </Group>
         {error && (
           <Alert color="red" role="alert">
@@ -151,30 +131,20 @@ export default function IssuesBoard() {
           </Alert>
         )}
 
-        {/* Persona Pill / Discipline Selector */}
-        <Card withBorder p="sm">
-          <Stack gap="xs">
-            <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-              Filter by Target Persona / Discipline
-            </Text>
-            <SegmentedControl
-              value={persona}
-              onChange={handlePersonaChange}
-              data={[
-                { label: 'All Disciplines', value: 'all' },
-                { label: '🎨 Design & UX', value: 'ui_ux' },
-                { label: '💻 Frontend', value: 'frontend' },
-                { label: '⚙️ Backend & SRE', value: 'backend' },
-                { label: '📝 Content & SEO', value: 'content_seo' },
-              ]}
-              color="indigo"
-              fullWidth
-            />
-          </Stack>
-        </Card>
-
         <Card withBorder>
           <Group align="end">
+            <Select
+              label="Discipline"
+              value={persona}
+              onChange={(v) => handlePersonaChange(v ?? 'all')}
+              data={[
+                { value: 'all', label: 'All disciplines' },
+                { value: 'ui_ux', label: 'Design & UX' },
+                { value: 'frontend', label: 'Frontend' },
+                { value: 'backend', label: 'Backend & SRE' },
+                { value: 'content_seo', label: 'Content & SEO' },
+              ]}
+            />
             <Select
               label="Status filter"
               clearable
@@ -216,95 +186,120 @@ export default function IssuesBoard() {
           </Group>
         </Card>
         <Card withBorder>
-          {issues.length === 0 ? (
+          {loading ? (
+            <Loader aria-label="Loading issues" />
+          ) : issues.length === 0 ? (
             <Text c="dimmed">
               No issues match these filters. A completed scan is needed before
               this is a clean result.
             </Text>
           ) : (
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Issue</Table.Th>
-                  <Table.Th>Track</Table.Th>
-                  <Table.Th>Rule</Table.Th>
-                  <Table.Th>Priority</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th>Last seen</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {issues.map((issue) => (
-                  <Table.Tr key={issue.id}>
-                    <Table.Td>
-                      <Stack gap={2}>
-                        <Group gap="xs">
-                          <Anchor
-                            component={Link}
-                            href={`/projects/${id}/issues/${issue.id}`}
-                          >
-                            {issue.title}
-                          </Anchor>
-                          {issue.notSeen && (
-                            <Badge color="orange" size="xs">
-                              Not seen
-                            </Badge>
-                          )}
-                        </Group>
-                        <Text size="xs" c="dimmed" className="break-all">
-                          {issue.affectedUrl}
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>{getPersonaBadge(issue.targetPersona)}</Table.Td>
-                    <Table.Td>
-                      <Text size="xs">{issue.latestRuleId}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Select
-                        aria-label={`Priority for ${issue.title}`}
-                        size="xs"
-                        w={85}
-                        value={issue.priority}
-                        disabled={busy === issue.id}
-                        onChange={(value) => {
-                          if (value) void edit(issue, { priority: value });
-                        }}
-                        data={['P0', 'P1', 'P2', 'P3']}
-                      />
-                    </Table.Td>
-                    <Table.Td>
-                      <Select
-                        aria-label={`Status for ${issue.title}`}
-                        size="xs"
-                        w={145}
-                        value={issue.status}
-                        disabled={busy === issue.id}
-                        onChange={(value) => {
-                          if (value) void edit(issue, { status: value });
-                        }}
-                        data={[
-                          { value: 'open', label: 'Open' },
-                          { value: 'in_progress', label: 'In progress' },
-                          { value: 'resolved', label: 'Resolved' },
-                          { value: 'wont_fix', label: "Won't fix" },
-                        ]}
-                      />
-                    </Table.Td>
-                    <Table.Td>
-                      {new Date(issue.lastSeen).toLocaleDateString()}
-                    </Table.Td>
+            <Table.ScrollContainer minWidth={650}>
+              <Table highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Issue</Table.Th>
+
+                    <Table.Th>Priority</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Last seen</Table.Th>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                </Table.Thead>
+                <Table.Tbody>
+                  {issues.map((issue) => (
+                    <Table.Tr key={issue.id}>
+                      <Table.Td>
+                        <Stack gap={2}>
+                          <Group gap="xs">
+                            <Anchor
+                              component={Link}
+                              href={`/projects/${id}/issues/${issue.id}`}
+                            >
+                              {issue.title}
+                            </Anchor>
+                            {issue.notSeen && (
+                              <Badge color="orange" size="xs">
+                                Not seen
+                              </Badge>
+                            )}
+                          </Group>
+                          <Text size="xs" c="dimmed" className="break-all">
+                            {issue.affectedUrl}
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+
+                      <Table.Td>
+                        <Select
+                          aria-label={`Priority for ${issue.title}`}
+                          size="xs"
+                          w={85}
+                          value={issue.priority}
+                          disabled={busy === issue.id}
+                          onChange={(value) => {
+                            if (value) void edit(issue, { priority: value });
+                          }}
+                          data={['P0', 'P1', 'P2', 'P3']}
+                        />
+                      </Table.Td>
+                      <Table.Td>
+                        <Select
+                          aria-label={`Status for ${issue.title}`}
+                          size="xs"
+                          w={145}
+                          value={issue.status}
+                          disabled={busy === issue.id}
+                          onChange={(value) => {
+                            if (value) void edit(issue, { status: value });
+                          }}
+                          data={[
+                            { value: 'open', label: 'Open' },
+                            { value: 'in_progress', label: 'In progress' },
+                            { value: 'resolved', label: 'Resolved' },
+                            { value: 'wont_fix', label: "Won't fix" },
+                          ]}
+                        />
+                      </Table.Td>
+                      <Table.Td>
+                        {new Date(issue.lastSeen).toLocaleDateString()}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
           )}
         </Card>
-        {nextOffset !== null && (
-          <Button variant="light" onClick={() => void load(nextOffset)}>
-            Load more
-          </Button>
-        )}
+        <Group justify="space-between">
+          <Text size="xs" c="dimmed">
+            {issues.length ? offset + 1 : 0}–{offset + issues.length} shown
+          </Text>
+          <Group>
+            <Button
+              variant="default"
+              disabled={loading || offset === 0}
+              onClick={() => {
+                const previous = Math.max(0, offset - 20);
+                setOffset(previous);
+                void load(previous);
+              }}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="default"
+              disabled={loading || nextOffset === null}
+              onClick={() => {
+                if (nextOffset !== null) {
+                  setOffset(nextOffset);
+                  void load(nextOffset);
+                }
+              }}
+            >
+              Next
+            </Button>
+          </Group>
+        </Group>
       </Stack>
     </Container>
   );
